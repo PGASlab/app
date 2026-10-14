@@ -1,10 +1,17 @@
 """Turn a grade into one concrete sentence of advice for a street-food vendor.
 
-The classifier decides the grade. The LLM (a small open Gemma model run by
+The classifier decides the grade. The LLM (Gemma 3 1B, an open model, run by
 llama.cpp on the board) only phrases the advice, and is given the action and
 the deadline that the rules below already computed. Its output is checked;
 if the LLM is missing, fails, takes longer than LLM_TIMEOUT_S, or says
 something that does not match the grade, the rule-based sentence is used.
+
+LLM backends, tried in this order:
+
+1. Inside the App Lab app: the official `arduino:llm` brick (llama.cpp runner,
+   model llamacpp:gemma-3-1b-it-Q4_0 set in app.yaml).
+2. PGAS_LLAMA_URL: any llama.cpp `llama-server` (OpenAI-compatible API).
+3. The llama.cpp CLI binary with a local GGUF file.
 
 Configuration (environment variables, all optional):
 
@@ -82,6 +89,9 @@ def rule_advice(grade: str, food: str, deadline: str | None) -> str:
     return f"Do not sell this {food}: throw it away now and wash the container before reusing it."
 
 
+SYSTEM_PROMPT = "You write one short, practical sentence of advice for street-food vendors."
+
+
 def build_prompt(grade: str, food: str, deadline: str | None, features: dict[str, float]) -> str:
     action = {
         "FRESH": f"It is fine to sell. Tell them to keep it cold and re-check before {deadline}.",
@@ -95,7 +105,11 @@ def build_prompt(grade: str, food: str, deadline: str | None, features: dict[str
         f"{food} and graded it {grade}.{env} {action} "
         "Reply with exactly one short, friendly sentence in English, at most 25 words, no lists, no emojis."
     )
-    # Gemma chat template.
+    return user
+
+
+def gemma_template(user: str) -> str:
+    """Gemma chat template, for backends that take a raw prompt."""
     return f"<start_of_turn>user\n{user}<end_of_turn>\n<start_of_turn>model\n"
 
 
@@ -135,17 +149,38 @@ def default_model_path() -> Path | None:
     return found[0] if found else None
 
 
+_brick_llm = None
+
+
+def _brick(timeout_s: float):
+    """The App Lab LLM brick, or None outside an App Lab app."""
+    global _brick_llm
+    if _brick_llm is None:
+        try:
+            from arduino.app_bricks.llm import LargeLanguageModel
+        except ImportError:
+            return None
+        _brick_llm = LargeLanguageModel(system_prompt=SYSTEM_PROMPT, temperature=0.3,
+                                        max_tokens=60, timeout=int(timeout_s))
+    return _brick_llm
+
+
 def run_llm(prompt: str, timeout_s: float) -> str:
-    """Run llama.cpp; raises on any failure (caller falls back)."""
+    """Run the LLM on the user message `prompt`; raises on any failure (caller falls back)."""
+    brick = _brick(timeout_s)
+    if brick is not None:
+        return brick.chat(prompt)
+
     url = os.environ.get("PGAS_LLAMA_URL")
     threads = os.environ.get("PGAS_LLM_THREADS", "4")
     if url:
-        body = json.dumps({"prompt": prompt, "n_predict": 60, "temperature": 0.3,
-                           "stop": ["<end_of_turn>", "\n"]}).encode()
-        req = urllib.request.Request(url.rstrip("/") + "/completion", data=body,
+        body = json.dumps({"messages": [{"role": "system", "content": SYSTEM_PROMPT},
+                                        {"role": "user", "content": prompt}],
+                           "max_tokens": 60, "temperature": 0.3}).encode()
+        req = urllib.request.Request(url.rstrip("/") + "/v1/chat/completions", data=body,
                                      headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(req, timeout=timeout_s) as r:
-            return json.loads(r.read())["content"]
+            return json.loads(r.read())["choices"][0]["message"]["content"]
 
     binary = os.environ.get("PGAS_LLAMA_BIN") or shutil.which("llama-completion") or shutil.which("llama-cli")
     model = default_model_path()
@@ -153,7 +188,7 @@ def run_llm(prompt: str, timeout_s: float) -> str:
         raise FileNotFoundError("llama.cpp binary not found")
     if model is None or not model.exists():
         raise FileNotFoundError("GGUF model not found")
-    cmd = [binary, "-m", str(model), "-p", prompt, "-n", "60", "--temp", "0.3",
+    cmd = [binary, "-m", str(model), "-p", gemma_template(prompt), "-n", "60", "--temp", "0.3",
            "-t", threads, "-no-cnv", "--no-display-prompt", "-r", "<end_of_turn>"]
     out = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_s)
     if out.returncode != 0:

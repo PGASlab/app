@@ -136,6 +136,21 @@ class CaptureWriter:
         self.rows = 0
         self.write_meta()
 
+    @classmethod
+    def resume(cls, csv_path: Path) -> "CaptureWriter":
+        """Re-open an existing capture for appending (continuous mode after a restart)."""
+        self = cls.__new__(cls)
+        self.csv_path = Path(csv_path)
+        self.meta_path = self.csv_path.with_suffix(".json")
+        self.meta = json.loads(self.meta_path.read_text()) if self.meta_path.exists() else {}
+        with open(self.csv_path) as fh:
+            self.rows = max(0, sum(1 for _ in fh) - 1)
+        self._fh = open(self.csv_path, "a", newline="")
+        self._w = csv.writer(self._fh)
+        self.meta["restarts"] = self.meta.get("restarts", 0) + 1
+        self.write_meta()
+        return self
+
     def write_meta(self, **extra) -> None:
         self.meta.update(extra)
         self.meta_path.write_text(json.dumps(self.meta, indent=2) + "\n")

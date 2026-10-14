@@ -19,7 +19,7 @@ from pathlib import Path
 
 from . import config
 
-OUTBOX = config.REPO_ROOT / "data" / "outbox.jsonl"
+OUTBOX = config.DATA_DIR / "outbox.jsonl"
 
 
 def _queue(text: str, reason: str, outbox: Path) -> dict:

@@ -48,9 +48,27 @@ GRADES = ("FRESH", "SPOILING", "DO-NOT-SELL")
 LLM_TIMEOUT_S = 20.0
 
 # --- Paths -------------------------------------------------------------------
-REPO_ROOT = Path(__file__).resolve().parent.parent
-DATA_RAW = REPO_ROOT / "data" / "raw"
-MODELS_DIR = REPO_ROOT / "models"
+_PKG = Path(__file__).resolve().parent
+REPO_ROOT = _PKG.parent
+
+
+def _app_root() -> Path:
+    """Root that holds data/ and models/.
+
+    In the repository: the repo root. When deployed as an App Lab app the
+    package lives in <app>/python/pgas and data/ + models/ sit next to app.yaml
+    (<app> is /app inside the container, ~/ArduinoApps/pgas on the board).
+    """
+    if _PKG.parent.name == "python" and (_PKG.parent.parent / "app.yaml").exists():
+        return _PKG.parent.parent
+    return REPO_ROOT
+
+
+APP_ROOT = _app_root()
+DATA_DIR = APP_ROOT / "data"
+DATA_RAW = DATA_DIR / "raw"
+JOBS_DIR = DATA_DIR / "jobs"
+MODELS_DIR = APP_ROOT / "models"
 FIGURES_DIR = REPO_ROOT / "docs" / "figures"
 
 
