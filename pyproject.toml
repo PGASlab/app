@@ -1,0 +1,42 @@
+[project]
+name = "pgas"
+version = "0.1.0"
+description = "PGAS - AI Nose, the modern silver spoon. Offline food-spoilage sensing on the Arduino UNO Q."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+# Runtime deps needed on the board (capture, features, inference, agent).
+dependencies = [
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+# Inference on the board.
+board = ["onnxruntime>=1.17"]
+# Training / plotting on the Mac.
+train = [
+    "scikit-learn>=1.3",
+    "skl2onnx>=1.16",
+    "onnx>=1.15",
+    "onnxruntime>=1.17",
+    "matplotlib>=3.7",
+]
+dev = [
+    "pytest>=7.4",
+    "scikit-learn>=1.3",
+    "skl2onnx>=1.16",
+    "onnx>=1.15",
+    "onnxruntime>=1.17",
+    "matplotlib>=3.7",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["pgas"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

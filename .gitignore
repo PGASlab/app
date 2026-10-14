@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+.DS_Store
+# Large model weights are downloaded, not committed.
+models/llm/
+*.gguf
+# Local outbox for unsent notifications.
+data/outbox.jsonl
+.env
