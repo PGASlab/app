@@ -87,3 +87,14 @@ def test_notify_stub(tmp_path, monkeypatch):
     rec = notify.send("hello", outbox=tmp_path / "o.jsonl")
     assert rec["sent"] is False and "stub" in rec["reason"]
     assert "hello" in (tmp_path / "o.jsonl").read_text()
+
+
+def test_aihub_device_preference():
+    from types import SimpleNamespace as D
+    from pgas import aihub
+    devs = [D(name="Samsung Galaxy S24", attributes=["chipset:qualcomm-snapdragon-8gen3"]),
+            D(name="QCS6490 (Proxy)", attributes=["chipset:qualcomm-qcs6490-proxy"]),
+            D(name="RB3 Gen 2 (Proxy)", attributes=["chipset:qualcomm-qcs6490-proxy"])]
+    dev, why = aihub.pick_device(devs)
+    assert dev.name == "QCS6490 (Proxy)" and why == "qcs6490"
+    assert aihub.pick_device([D(name="x", attributes=[])]) == (None, "")

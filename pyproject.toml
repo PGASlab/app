@@ -21,6 +21,7 @@ train = [
     "onnxruntime>=1.17",
     "matplotlib>=3.7",
 ]
+aihub = ["qai-hub>=0.30"]
 dev = [
     "pytest>=7.4",
     "scikit-learn>=1.3",
