@@ -236,3 +236,36 @@ def test_cli_times_out_without_app(tmp_path, monkeypatch):
     monkeypatch.setattr(jobs, "follow", lambda *a, **k: (_ for _ in ()).throw(TimeoutError("not running")))
     assert capture.main(["--selftest", "--jobs-dir", str(tmp_path)]) == 2
     assert list((tmp_path / "pending").glob("*.json"))
+
+
+@pytest.mark.parametrize("fail_at,step", [(5, "step 1/3"), (32, "step 2/3 (move)"), (60, "step 2/3 (over the food)"),
+                                          (100, "step 3/3")])
+def test_disconnected_sensor_asks_for_retest(tmp_path, fail_at, step):
+    from pgas.session import RetestError
+    profile = hood_profile(800)
+    src = MockSource(lambda i: (0.0, *profile(i)[1:]) if i >= fail_at else profile(i))
+    with pytest.raises(RetestError, match="please re-test") as e:
+        run_hood(src, NullDisplay(), tmp_path, "fresh_x", log=lambda m: None)
+    assert e.value.step.startswith(step) and "MQ135" in e.value.reason
+
+
+def test_strong_smell_at_full_scale_is_not_an_error(tmp_path):
+    res = run_hood(MockSource(lambda i: (config.ADC_MAX, 2500, 2800)), NullDisplay(), tmp_path, "swill_x",
+                   log=lambda m: None, recover_max_s=10)
+    assert res.rows > 0
+
+
+def test_runtime_reports_retest(tmp_path):
+    rt = _runtime(tmp_path, MockSource(limit=12))
+    jid = jobs.submit(rt.jobs_dir, "hood", label="fresh_x", use_llm=False)
+    import time
+    t = time.time()
+    while time.time() - t < 15:
+        rt.poll_once()
+        st = jobs.read_status(rt.jobs_dir, jid)
+        if st and st["state"] in jobs.FINAL:
+            break
+        time.sleep(0.05)
+    assert st["state"] == "failed" and st["result"]["retest"] is True
+    assert any(ln.split(" ", 1)[1].startswith("RETEST:") for ln in st["lines"])
+    assert rt.disp.frames[-1] == display.text3("E")

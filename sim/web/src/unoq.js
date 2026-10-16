@@ -12,12 +12,17 @@
 const DIV = 20 / 30, FULL14 = 16383, VREF = 3.3;
 const SENSORS = ['mq135', 'mq3', 'mq2'];
 const CLEAN_AIR = [1.0, 0.8, 0.9];          // module volts - simulation parameter
-const FOODS = {                              // rise in module volts - simulation parameters, not measurements
-  fresh: { name: 'fresh chicken (simulated)', amp: [0.15, 0.05, 0.10] },
-  swill: { name: 'swill (simulated)', amp: [2.20, 1.40, 1.80] },
+// Each test picks one simulated sample at random. Rise in module volts -
+// simulation parameters, not measurements.
+const FOODS = {
+  fresh: { amp: [0.15, 0.05, 0.10] },
+  spoiling: { amp: [0.70, 0.35, 0.55] },
+  spoiled: { amp: [2.20, 1.40, 1.80] },
 };
+const MIN_GAS_RAW = 0.01 * 16383;  // below 1 % of full scale = gas sensor not detected (pgas/session.py)
+const NO_DATA_MS = 3000;           // no Bridge sample for 3 s = MCU not answering
 const $ = (id) => document.getElementById(id);
-const state = { module: [...CLEAN_AIR], temp: 26.5, rh: 65, dht: true, dhtAt: 0 };
+const state = { module: [...CLEAN_AIR], temp: 26.5, rh: 65, dht: true, mq: true, dhtAt: 0 };
 let mcu = null, framePtr = 0, latest = null, samples = 0, matrixDraws = 0, bridgeCalls = 0, running = true;
 let matrix = new Array(104).fill(0);
 
@@ -52,7 +57,7 @@ function onNotify(text) {
 const FONT = {
   '0': [7, 5, 5, 5, 7], '1': [2, 6, 2, 2, 7], '2': [7, 1, 7, 4, 7], '3': [7, 1, 7, 1, 7], '4': [5, 5, 7, 1, 1],
   '5': [7, 4, 7, 1, 7], '6': [7, 4, 7, 5, 7], '7': [7, 1, 2, 2, 2], '8': [7, 5, 7, 5, 7], '9': [7, 5, 7, 1, 7],
-  A: [2, 5, 7, 5, 5], H: [5, 5, 7, 5, 5], V: [5, 5, 5, 5, 2], M: [5, 7, 7, 5, 5], ' ': [0, 0, 0, 0, 0],
+  E: [7, 4, 6, 4, 7], A: [2, 5, 7, 5, 5], H: [5, 5, 7, 5, 5], V: [5, 5, 5, 5, 2], M: [5, 7, 7, 5, 5], ' ': [0, 0, 0, 0, 0],
 };
 function text3(s) {
   const f = new Array(104).fill(0);
@@ -74,27 +79,75 @@ let lastSent = '';
 function show(frame) { const k = frame.join(''); if (k !== lastSent) { lastSent = k; bridgeDraw(frame); } }
 
 // ------------------------------------------------------------------ session.py port (hood mode)
-const S = { phase: 'idle', i: 0, base: [[], [], []], peak: [-1e9, -1e9, -1e9], held: 0, rows: [], food: null, short: true, result: null };
+const S = { phase: 'idle', i: 0, base: [[], [], []], peak: [-1e9, -1e9, -1e9], held: 0, rows: [], food: null, short: true, result: null, run: 0, lastAt: 0, failedStep: 0 };
 const op = { target: 0, level: 0 };
 const D = () => (S.short ? { A: 10, M: 5, H: 20, V: 60 } : { A: 30, M: 5, H: 60, V: 180 });
 const volts = (raw) => raw / FULL14 * VREF / DIV;
 const median = (a) => { const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
-function startHood(food) {
+function startHood() {
+  const keys = Object.keys(FOODS);
+  const food = keys[Math.floor(Math.random() * keys.length)];
   finalRise = null;
-  Object.assign(S, { phase: 'A', i: 0, base: [[], [], []], peak: [-1e9, -1e9, -1e9], held: 0, rows: [], food, short: $('short').checked, result: null });
+  hideRetest();
+  Object.assign(S, { phase: 'A', i: 0, base: [[], [], []], peak: [-1e9, -1e9, -1e9], held: 0, rows: [], food, short: $('short').checked,
+    result: null, run: S.run + 1, lastAt: performance.now(), failedStep: 0 });
   op.target = 0;
+  op.level = 0;
   $('result').innerHTML = '<tr><td colspan="4" style="text-align:left">capturing…</td></tr>';
-  log(`$ python3 -m pgas.capture --mode hood --label ${food === 'swill' ? 'swill_sim' : 'fresh_sim_chicken'}`);
+  log(`$ python3 -m pgas.capture --mode hood --label sample_sim   (simulated sample: ${food})`);
   log('STEP 1/3: hold the box in open air, away from food');
 }
+
+// "Please re-test": any step that gets no usable reading stops the test.
+class RetestError extends Error {
+  constructor(code, detail) { super(code); this.code = code; this.detail = detail; }
+}
+function validate(raw) {
+  if (!Array.isArray(raw) || raw.length < 6 || raw.slice(0, 3).some((x) => !Number.isFinite(x))) {
+    throw new RetestError('bad_data', `malformed sample: ${JSON.stringify(raw)}`);
+  }
+  SENSORS.forEach((s, k) => {
+    if (raw[k] < MIN_GAS_RAW) throw new RetestError('no_sensor', `${s.toUpperCase()} on A${k} reads ${raw[k]}`);
+  });
+}
+function fail(err) {
+  if (S.phase === 'idle' || S.phase === 'done' || S.phase === 'error') return;
+  const step = STEP_OF[S.phase] || 1;
+  S.failedStep = step;
+  S.phase = 'error';
+  op.target = 0;
+  show(text3('E'));
+  const code = err instanceof RetestError ? err.code : 'internal';
+  const detail = err instanceof RetestError ? err.detail : String(err);
+  log(`RETEST: step ${step}/3 - ${detail} - please re-test`);
+  $('retest-msg').textContent = T('rt_msg')(step, T(`rt_${code}`));
+  $('retest-why').textContent = detail;
+  $('retest').hidden = false;
+  $('retest-again').focus();
+}
+function hideRetest() { $('retest').hidden = true; }
 function onSample(raw) {
-  if (S.phase === 'idle' || S.phase === 'done') return;
+  if (S.phase === 'idle' || S.phase === 'done' || S.phase === 'error') return;
+  S.lastAt = performance.now();
+  try {
+    validate(raw);
+    stepSample(raw);
+  } catch (err) {
+    fail(err);
+  }
+}
+function stepSample(raw) {
   const v = raw.slice(0, 3).map(volts), d = D();
   S.rows.push({ phase: S.phase, v, t: raw[3], h: raw[4], ok: raw[5] });
   if (S.phase === 'A') {
     v.forEach((x, k) => S.base[k].push(x));
     show(countdown('A', d.A - S.i, S.i / d.A));
-    if (++S.i >= d.A) { S.phase = 'M'; S.i = 0; log('MOVE NOW: put the box over the food, opening down, 3-5 cm above it'); setTimeout(() => { op.target = 1; log('OPERATOR: box lowered over the food'); }, 2000); }
+    if (++S.i >= d.A) {
+      S.phase = 'M'; S.i = 0;
+      log('MOVE NOW: put the box over the food, opening down, 3-5 cm above it');
+      const run = S.run;
+      setTimeout(() => { if (S.run === run && (S.phase === 'M' || S.phase === 'H')) { op.target = 1; log('OPERATOR: box lowered over the food'); } }, 2000);
+    }
   } else if (S.phase === 'M') {
     show(countdown('M', d.M - S.i, S.i / d.M));
     if (++S.i >= d.M) { S.phase = 'H'; S.i = 0; log('STEP 2/3: hold the box still over the food'); }
@@ -131,7 +184,7 @@ function finish(recovered) {
 // ------------------------------------------------------------------ physical world
 function pushInputs() {
   if (!mcu) return;
-  state.module.forEach((v, k) => mcu._hal_set_module(k, v));
+  state.module.forEach((v, k) => mcu._hal_set_module(k, state.mq ? v : 0));
   mcu._hal_set_env(state.temp, state.rh);
   mcu._hal_set_dht_connected(state.dht ? 1 : 0);
 }
@@ -182,6 +235,10 @@ function frame(now) {
     pushInputs();
     mcu._hal_run_us(dt * 1e6);
   }
+  // Watchdog: a step that hears nothing from the MCU for 3 s asks for a re-test.
+  if (['A', 'M', 'H', 'V'].includes(S.phase) && now - S.lastAt > NO_DATA_MS) {
+    fail(new RetestError('no_data', `no sensor reading for ${(NO_DATA_MS / 1000).toFixed(0)} s`));
+  }
   try { render(); } catch (e) { console.error(e); }
   requestAnimationFrame(frame);
 }
@@ -191,8 +248,13 @@ const I18N = {
   en: {
     brand_sub: 'The modern silver spoon, on an Arduino UNO Q', chip: 'Simulation', screen_cap: "The board's 8 × 13 LED screen",
     h1: 'Is this food still OK to sell?',
-    lede: 'PGAS sniffs the air above the food with three gas sensors. Pick a sample, then follow the screen.',
-    btn_fresh: 'Test fresh chicken', btn_bad: 'Test spoiled leftovers',
+    lede: 'PGAS sniffs the air above the food with three gas sensors. Press the button, then follow the screen.',
+    btn_test: 'Test freshness', mq_conn: 'MQ gas sensors connected',
+    rt_title: 'Please re-test', rt_close: 'Close', rt_again: 'Test again',
+    rt_msg: (n, why) => `Step ${n} stopped: ${why} Check the box and the wires, then test again.`,
+    rt_no_data: 'no readings arrived from the board.', rt_no_sensor: 'a gas sensor was not detected.',
+    rt_bad_data: 'the board sent an unreadable reading.', rt_internal: 'something went wrong while reading.',
+    v_error: 'The test stopped. Please re-test.', ph_error: 'E · please re-test',
     step1: '<b>Smell clean air</b><br>Hold the box away from food.',
     step2: '<b>Cover the food</b><br>Box upside down, 3–5 cm above it.',
     step3: '<b>Lift and air out</b><br>Wait until the smell is gone.',
@@ -217,8 +279,13 @@ const I18N = {
   zh: {
     brand_sub: '現代版的銀湯匙，跑在 Arduino UNO Q 上', chip: '模擬', screen_cap: '板子上的 8 × 13 LED 螢幕',
     h1: '這份食物還能賣嗎？',
-    lede: 'PGAS 用三顆氣體感測器聞食物上方的空氣。選一個樣品，接著照螢幕指示做。',
-    btn_fresh: '測新鮮雞肉', btn_bad: '測壞掉的剩菜',
+    lede: 'PGAS 用三顆氣體感測器聞食物上方的空氣。按下按鈕，接著照螢幕指示做。',
+    btn_test: '測試新鮮度', mq_conn: 'MQ 氣體感測器已連接',
+    rt_title: '請重測', rt_close: '關閉', rt_again: '重新測試',
+    rt_msg: (n, why) => `步驟 ${n} 中斷：${why}請檢查盒子和接線後再測一次。`,
+    rt_no_data: '沒有收到板子傳來的數值。', rt_no_sensor: '偵測不到氣體感測器。',
+    rt_bad_data: '板子傳來的數值無法讀取。', rt_internal: '讀取時發生錯誤。',
+    v_error: '檢測中斷，請重測。', ph_error: 'E・請重測',
     step1: '<b>先聞乾淨空氣</b><br>把盒子拿離食物。',
     step2: '<b>罩住食物</b><br>盒子倒扣，懸在食物上方 3–5 公分。',
     step3: '<b>拿開通風</b><br>等氣味散掉。',
@@ -263,13 +330,16 @@ function initialLang() {
 let bigCells = [];
 const STEP_OF = { A: 1, M: 2, H: 2, V: 3 };
 function renderSteps() {
-  const d = D(), cur = STEP_OF[S.phase] || 0, done = S.phase === 'done';
+  const d = D(), done = S.phase === 'done', err = S.phase === 'error';
+  const cur = err ? S.failedStep : (STEP_OF[S.phase] || 0);
   const left = { A: d.A - S.i, M: d.M - S.i + d.H, H: d.H - S.i, V: null }[S.phase];
   for (let n = 1; n <= 3; n++) {
     const li = $(`step-${n}`);
-    li.classList.toggle('active', n === cur);
+    li.classList.toggle('active', n === cur && !err);
+    li.classList.toggle('error', n === cur && err);
     li.classList.toggle('done', done || (cur > n));
-    $(`t-${n}`).textContent = n === cur ? (left != null ? T('sec')(Math.max(0, left)) : T('waiting')) : (done || cur > n ? '✓' : '');
+    $(`t-${n}`).textContent = err ? (n === cur ? '✕' : cur > n ? '✓' : '')
+      : n === cur ? (left != null ? T('sec')(Math.max(0, left)) : T('waiting')) : (done || cur > n ? '✓' : '');
   }
 }
 function smellRise() {
@@ -282,6 +352,12 @@ function smellWord(r) { return T(r < 0.2 ? 'w_none' : r < 0.8 ? 'w_some' : 'w_st
 let finalRise = null;
 function renderMeter() {
   const active = S.phase !== 'idle';
+  if (S.phase === 'error') {
+    $('meter-fill').style.width = '0%';
+    $('meter-word').textContent = '–';
+    $('verdict').textContent = T('v_error');
+    return;
+  }
   const r = S.phase === 'done' && finalRise != null ? finalRise : (active ? smellRise() : 0);
   $('meter-fill').style.width = `${Math.min(100, r / 2 * 100)}%`;
   $('meter-word').textContent = active ? smellWord(r) : '–';
@@ -314,7 +390,11 @@ async function start() {
   $('sl-temp').addEventListener('input', (e) => { state.temp = +e.target.value; });
   $('sl-rh').addEventListener('input', (e) => { state.rh = +e.target.value; });
   $('dht-conn').addEventListener('change', (e) => { state.dht = e.target.checked; });
-  document.querySelectorAll('[data-hood]').forEach((b) => b.addEventListener('click', () => startHood(b.dataset.hood)));
+  $('test-btn').addEventListener('click', () => startHood());
+  $('retest-again').addEventListener('click', () => startHood());
+  $('retest-close').addEventListener('click', () => { hideRetest(); $('test-btn').focus(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('retest').hidden) hideRetest(); });
+  $('mq-conn').addEventListener('change', (e) => { state.mq = e.target.checked; });
   $('reset-air').addEventListener('click', () => { S.phase = 'idle'; S.food = null; op.level = 0; state.module = [...CLEAN_AIR]; SENSORS.forEach((s, k) => { $(`sl-${s}`).value = state.module[k]; }); finalRise = null; show(new Array(104).fill(0)); $('verdict').textContent = T('v_idle'); log('clean air'); });
   $('pause').addEventListener('click', (e) => { running = !running; e.target.textContent = running ? T('pause') : T('resume'); });
   $('lang-en').addEventListener('click', () => setLang('en'));

@@ -19,7 +19,7 @@ from pathlib import Path
 
 from . import config, display, jobs, notify, selftest
 from .dataio import CaptureWriter
-from .session import ContinuousState, Reading, run_continuous, run_hood
+from .session import ContinuousState, Reading, RetestError, run_continuous, run_hood
 
 
 class QueueSource:
@@ -139,6 +139,10 @@ class Runtime:
             else:
                 st.log(f"unknown job kind {kind}")
                 st.finish("failed")
+        except RetestError as e:
+            st.log(f"RETEST: {e}")
+            self.disp.show(display.text3("E"))
+            st.finish("failed", {"error": str(e), "retest": True, "step": e.step})
         except Exception as e:  # noqa: BLE001
             st.log(f"ERROR: {e}")
             traceback.print_exc()

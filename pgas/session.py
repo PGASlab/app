@@ -55,14 +55,34 @@ class SessionError(RuntimeError):
     pass
 
 
+class RetestError(SessionError):
+    """A step got no usable reading; the operator should run the test again."""
+
+    def __init__(self, step: str, reason: str):
+        self.step, self.reason = step, reason
+        super().__init__(f"{step}: {reason} - please re-test")
+
+
+# A gas channel below 1 % of full scale means the sensor is not connected
+# (a working MQ module always outputs some voltage). Readings near full scale
+# are a strong smell, not a fault, so they are allowed.
+MIN_GAS_FRACTION = 0.01
+
+
 def _volts(raw: float) -> float:
     return config.adc_to_sensor_volts(raw)
 
 
-def _next(src: Source, timeout: float = 5.0) -> Reading:
+def _next(src: Source, timeout: float = 5.0, step: str = "capture") -> Reading:
+    """Next 1 Hz reading, validated; raises RetestError when it is unusable."""
     r = src.read(timeout)
     if r is None:
-        raise SessionError(f"no sensor reading for {timeout:.0f} s - is the sketch running?")
+        raise RetestError(step, f"no sensor reading for {timeout:.0f} s (is the sketch running?)")
+    floor = MIN_GAS_FRACTION * config.ADC_MAX
+    for name, raw in zip(config.SENSORS, (r.a0, r.a1, r.a2)):
+        if raw is None or math.isnan(raw) or raw < floor:
+            pin = config.SENSOR_PINS[name]
+            raise RetestError(step, f"{name.upper()} on {pin} reads {raw} - sensor not detected")
     return r
 
 
@@ -118,7 +138,7 @@ def run_hood(
         log(f"STEP 1/3: hold the box in open air, away from food ({baseline_s} s)")
         for i in range(baseline_s):
             disp.show(display.countdown("A", baseline_s - i, i / baseline_s))
-            r = _next(src)
+            r = _next(src, step="step 1/3 (clean air)")
             record("baseline", r)
             for s, v in vals(r).items():
                 base[s].append(v)
@@ -129,12 +149,12 @@ def run_hood(
         log(f"MOVE NOW: put the box over the food, opening down, 3-5 cm above it ({move_s} s)")
         for i in range(move_s):
             disp.show(display.countdown("M", move_s - i, i / move_s))
-            record("move", _next(src))
+            record("move", _next(src, step="step 2/3 (move)"))
 
         log(f"STEP 2/3: hold the box still over the food ({expose_s} s)")
         for i in range(expose_s):
             disp.show(display.countdown("H", expose_s - i, i / expose_s))
-            r = _next(src)
+            r = _next(src, step="step 2/3 (over the food)")
             record("expose", r)
             for s, v in vals(r).items():
                 peak[s] = max(peak[s], v)
@@ -145,7 +165,7 @@ def run_hood(
         held, recovered = 0, False
         for i in range(recover_max_s):
             disp.show(display.countdown("V", recover_max_s - i, i / recover_max_s))
-            r = _next(src)
+            r = _next(src, step="step 3/3 (airing out)")
             record("recover", r)
             ok = all(
                 v - base_med[s] <= RECOVER_FRACTION * max(0.0, peak[s] - base_med[s]) + RECOVER_ABS_V
