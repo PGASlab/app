@@ -27,14 +27,15 @@ def analyze(csv_path: Path | str, use_llm: bool = True, classifier=None, llm=Non
     t0 = time.perf_counter()
     cap = load_capture(csv_path)
     feats = hood_features(cap)
-    t_feat = time.perf_counter()
+    t_load = time.perf_counter()
     clf = classifier if classifier is not None else get_classifier()
+    t_feat = time.perf_counter()  # model loading (first call only) is reported separately
     out: dict = {"file": Path(csv_path).name, "label": cap.label,
                  "features": {k: round(v, 4) for k, v in feats.items()}}
     if clf is None:
         out["grade"] = None
         out["note"] = "no trained model in models/ yet - run python -m pgas.train on the Mac and redeploy"
-        out["timing_s"] = {"features": round(t_feat - t0, 3)}
+        out["timing_s"] = {"features": round(t_load - t0, 3)}
         return out
     pred = clf.predict(feats)
     t_inf = time.perf_counter()
@@ -48,10 +49,11 @@ def analyze(csv_path: Path | str, use_llm: bool = True, classifier=None, llm=Non
         "advice_source": adv.source,
         "fallback_reason": adv.fallback_reason,
         "timing_s": {
-            "features": round(t_feat - t0, 3),
+            "features": round(t_load - t0, 3),
+            "model_load": round(t_feat - t_load, 3),
             "inference": round(t_inf - t_feat, 4),
             "advice": round(t_adv - t_inf, 2),
-            "total_after_capture": round(t_adv - t0, 2),
+            "total_after_capture": round(t_adv - t0, 2),  # includes model_load
         },
     })
     out["advice_detail"] = asdict(adv)

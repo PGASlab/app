@@ -1,0 +1,5 @@
+# For the Wokwi VS Code extension / wokwi-cli (firmware built by sim/build_avr.sh).
+[wokwi]
+version = 1
+firmware = "../../build/sim/pgas.hex"
+elf = "../../build/sim/pgas.elf"

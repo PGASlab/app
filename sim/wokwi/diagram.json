@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "author": "PGASlab",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-arduino-uno", "id": "uno", "top": 120, "left": 20, "attrs": {} },
+    { "type": "wokwi-slide-potentiometer", "id": "mq135", "top": -150, "left": 0, "attrs": { "travelLength": "30", "value": "136" } },
+    { "type": "wokwi-slide-potentiometer", "id": "mq3", "top": -90, "left": 0, "attrs": { "travelLength": "30", "value": "109" } },
+    { "type": "wokwi-slide-potentiometer", "id": "mq2", "top": -30, "left": 0, "attrs": { "travelLength": "30", "value": "123" } },
+    { "type": "wokwi-dht22", "id": "dht", "top": -140, "left": 300, "attrs": { "temperature": "26.5", "humidity": "65" } },
+    { "type": "wokwi-resistor", "id": "r_pullup", "top": -10, "left": 380, "rotate": 90, "attrs": { "value": "10000" } }
+  ],
+  "connections": [
+    [ "mq135:SIG", "uno:A0", "orange", [] ],
+    [ "mq135:VCC", "uno:5V", "red", [] ],
+    [ "mq135:GND", "uno:GND.2", "black", [] ],
+    [ "mq3:SIG", "uno:A1", "orange", [] ],
+    [ "mq3:VCC", "uno:5V", "red", [] ],
+    [ "mq3:GND", "uno:GND.2", "black", [] ],
+    [ "mq2:SIG", "uno:A2", "orange", [] ],
+    [ "mq2:VCC", "uno:5V", "red", [] ],
+    [ "mq2:GND", "uno:GND.2", "black", [] ],
+    [ "dht:VCC", "uno:3.3V", "red", [] ],
+    [ "dht:GND", "uno:GND.3", "black", [] ],
+    [ "dht:SDA", "uno:2", "green", [] ],
+    [ "r_pullup:1", "uno:3.3V", "red", [] ],
+    [ "r_pullup:2", "dht:SDA", "green", [] ]
+  ],
+  "serialMonitor": { "display": "always", "newline": "lf" }
+}

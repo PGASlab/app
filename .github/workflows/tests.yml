@@ -19,3 +19,30 @@ jobs:
           uv pip install -e ".[dev]"
       - name: Test
         run: .venv/bin/python -m pytest -v
+
+  simulation:
+    # Real sketch on a simulated MCU (simavr) + the real Linux-side app.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install AVR toolchain and simavr
+        run: sudo apt-get update && sudo apt-get install -y gcc-avr avr-libc simavr libsimavr-dev libelf-dev
+      - name: Build firmware and virtual board
+        run: |
+          git clone --depth 1 https://github.com/arduino/ArduinoCore-avr build/ArduinoCore-avr
+          sim/build_avr.sh build/ArduinoCore-avr build/sim
+          sim/build_board.sh build/sim
+      - name: Install
+        run: |
+          uv venv --python 3.13 .venv
+          uv pip install -e ".[dev]"
+      - name: Sketch-on-simavr test
+        run: PGAS_SIM_ELF=build/sim/pgas.elf PGAS_SIM_BOARD=build/sim/pgas_board .venv/bin/python -m pytest -v tests/test_sim.py
+      - name: End-to-end simulation (selftest + 2 hood captures)
+        run: .venv/bin/python sim/run_sim.py --elf build/sim/pgas.elf --board build/sim/pgas_board --log-dir build/sim/logs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: simulation-log
+          path: build/sim/logs/

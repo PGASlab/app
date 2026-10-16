@@ -6,6 +6,7 @@ not a measured result.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 # --- Wiring -----------------------------------------------------------------
@@ -68,7 +69,7 @@ APP_ROOT = _app_root()
 DATA_DIR = APP_ROOT / "data"
 DATA_RAW = DATA_DIR / "raw"
 JOBS_DIR = DATA_DIR / "jobs"
-MODELS_DIR = APP_ROOT / "models"
+MODELS_DIR = Path(os.environ.get("PGAS_MODELS_DIR") or APP_ROOT / "models")
 FIGURES_DIR = REPO_ROOT / "docs" / "figures"
 
 
