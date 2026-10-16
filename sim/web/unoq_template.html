@@ -60,6 +60,16 @@ button:focus-visible, summary:focus-visible, input:focus-visible { outline: 3px 
 .steps li.active { border-color: var(--nose); color: var(--ink); box-shadow: 0 0 0 2px var(--nose) inset; }
 .steps li.active .n { background: var(--nose); color: #fff; }
 .steps li.done .n { background: var(--lime-deep); color: #fff; }
+.steps li.error { border-color: var(--bad); box-shadow: 0 0 0 2px var(--bad) inset; color: var(--ink); }
+.steps li.error .n { background: var(--bad); color: #fff; }
+.retest-backdrop { position: fixed; inset: 0; background: rgba(10, 14, 8, .55); display: grid; place-items: center; z-index: 20;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.retest { background: var(--surface); color: var(--ink); border-radius: 16px; padding: 22px; max-width: 420px; width: 100%; border-top: 6px solid var(--bad); box-shadow: 0 20px 50px rgba(0,0,0,.3); }
+.retest-backdrop[hidden] { display: none; }
+.retest h3 { font: 800 24px var(--display); margin: 0 0 6px; color: var(--bad); }
+.retest p { margin: 0 0 8px; }
+.retest .why { color: var(--muted); font-size: 13px; font-family: var(--mono); word-break: break-word; }
+.retest .btns { justify-content: flex-end; }
 .steps b { color: var(--ink); font-weight: 600; }
 .steps .t { font: 600 14px var(--mono); font-variant-numeric: tabular-nums; }
 .meter { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
@@ -130,10 +140,9 @@ pre { margin: 0; background: #0d110b; color: #cfe8b0; font: 12px/1.4 var(--mono)
     </div>
     <div>
       <h1 data-i18n="h1">Is this food still OK to sell?</h1>
-      <p class="lede" data-i18n="lede">PGAS sniffs the air above the food with three gas sensors. Pick a sample, then follow the screen.</p>
+      <p class="lede" data-i18n="lede">PGAS sniffs the air above the food with three gas sensors. Press the button, then follow the screen.</p>
       <div class="go">
-        <button class="big fresh" data-hood="fresh" data-i18n="btn_fresh">Test fresh chicken</button>
-        <button class="big bad" data-hood="swill" data-i18n="btn_bad">Test spoiled leftovers</button>
+        <button class="big fresh" id="test-btn" data-i18n="btn_test">Test freshness</button>
       </div>
       <ol class="steps">
         <li id="step-1"><span class="n">1</span><span data-i18n-html="step1"><b>Smell clean air</b><br>Hold the box away from food.</span><span class="t" id="t-1"></span></li>
@@ -201,6 +210,7 @@ pre { margin: 0; background: #0d110b; color: #cfe8b0; font: 12px/1.4 var(--mono)
         <div class="row"><label for="sl-temp">Temp</label><input id="sl-temp" type="range" min="-10" max="50" step="0.1" value="26.5"><output id="val-temp"></output></div>
         <div class="row"><label for="sl-rh">RH</label><input id="sl-rh" type="range" min="0" max="100" step="1" value="65"><output id="val-rh"></output></div>
         <label><input id="dht-conn" type="checkbox" checked> <span data-i18n="dht_conn">DHT22 connected</span></label>
+        <label style="display:block"><input id="mq-conn" type="checkbox" checked> <span data-i18n="mq_conn">MQ gas sensors connected</span></label>
         <div class="btns">
           <button id="reset-air" data-i18n="btn_air">Clean air</button>
           <button id="pause">Pause MCU</button>
@@ -230,6 +240,17 @@ pre { margin: 0; background: #0d110b; color: #cfe8b0; font: 12px/1.4 var(--mono)
     </div>
     <p class="note" data-i18n-html="eng_note">The UNO Q code path of <code>app/sketch/sketch.ino</code> runs on an emulated UNO Q MCU API (14-bit ADC, Bridge, LED matrix). The STM32 itself is not emulated. Food gas levels are simulation parameters, not measurements.</p>
   </details>
+</div>
+<div class="retest-backdrop" id="retest" hidden>
+  <div class="retest" role="alertdialog" aria-modal="true" aria-labelledby="retest-title" aria-describedby="retest-msg">
+    <h3 id="retest-title" data-i18n="rt_title">Please re-test</h3>
+    <p id="retest-msg"></p>
+    <p class="why" id="retest-why"></p>
+    <div class="btns">
+      <button id="retest-close" data-i18n="rt_close">Close</button>
+      <button class="big fresh" id="retest-again" data-i18n="rt_again">Test again</button>
+    </div>
+  </div>
 </div>
 <script>
 // sensor rows of the wiring diagram
