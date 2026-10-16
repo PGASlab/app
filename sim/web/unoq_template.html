@@ -31,11 +31,14 @@
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); }
 .wrap { max-width: 1160px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-.top { display: flex; align-items: center; gap: 12px; padding-block: 16px 8px; }
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-block: 16px 8px; }
 .top img { width: 44px; height: 44px; border-radius: 12px; }
 .brand { font: 800 20px/1.1 var(--display); }
 .brand small { display: block; font: 500 13px var(--body); color: var(--muted); }
-.chip { margin-left: auto; background: var(--pink); color: #3a0a18; font: 600 12px var(--body); padding: 4px 10px; border-radius: 99px; white-space: nowrap; }
+.lang { margin-left: auto; display: flex; border: 1px solid var(--line); border-radius: 99px; overflow: hidden; background: var(--surface); }
+.lang button { border: 0; border-radius: 0; padding: 6px 12px; font: 600 13px var(--body); background: transparent; color: var(--muted); }
+.lang button[aria-pressed="true"] { background: var(--nose); color: #fff; }
+.chip { background: var(--pink); color: #3a0a18; font: 600 12px var(--body); padding: 4px 10px; border-radius: 99px; white-space: nowrap; }
 
 .hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 20px; padding-block: 12px 24px; align-items: start; }
 .screen { background: var(--panel); border-radius: 20px; padding: 22px; box-shadow: 0 0 0 6px var(--lime) inset, 0 10px 30px rgba(20, 40, 10, .18); }
@@ -115,40 +118,41 @@ pre { margin: 0; background: #0d110b; color: #cfe8b0; font: 12px/1.4 var(--mono)
 <div class="wrap">
   <div class="top">
     <img alt="PGAS logo" src="data:image/png;base64,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">
-    <div class="brand">PGAS · AI Nose<small>The modern silver spoon, on an Arduino UNO Q</small></div>
-    <span class="chip">Simulation</span>
+    <div class="brand">PGAS · AI Nose<small data-i18n="brand_sub">The modern silver spoon, on an Arduino UNO Q</small></div>
+    <div class="lang" role="group" aria-label="Language / 語言"><button id="lang-en" type="button" lang="en">English</button><button id="lang-zh" type="button" lang="zh-Hant-TW">繁體中文</button></div>
+    <span class="chip" data-i18n="chip">Simulation</span>
   </div>
 
   <div class="hero">
     <div class="screen" aria-label="UNO Q LED matrix">
       <div id="bigmatrix"></div>
-      <div class="screen-cap"><span>The board's 8 × 13 LED screen</span><span id="phase">ready</span></div>
+      <div class="screen-cap"><span data-i18n="screen_cap">The board's 8 × 13 LED screen</span><span id="phase">ready</span></div>
     </div>
     <div>
-      <h1>Is this food still OK to sell?</h1>
-      <p class="lede">PGAS sniffs the air above the food with three gas sensors. Pick a sample, then follow the screen.</p>
+      <h1 data-i18n="h1">Is this food still OK to sell?</h1>
+      <p class="lede" data-i18n="lede">PGAS sniffs the air above the food with three gas sensors. Pick a sample, then follow the screen.</p>
       <div class="go">
-        <button class="big fresh" data-hood="fresh">Test fresh chicken</button>
-        <button class="big bad" data-hood="swill">Test spoiled leftovers</button>
+        <button class="big fresh" data-hood="fresh" data-i18n="btn_fresh">Test fresh chicken</button>
+        <button class="big bad" data-hood="swill" data-i18n="btn_bad">Test spoiled leftovers</button>
       </div>
       <ol class="steps">
-        <li id="step-1"><span class="n">1</span><span><b>Smell clean air</b><br>Hold the box away from food.</span><span class="t" id="t-1"></span></li>
-        <li id="step-2"><span class="n">2</span><span><b>Cover the food</b><br>Box upside down, 3–5 cm above it.</span><span class="t" id="t-2"></span></li>
-        <li id="step-3"><span class="n">3</span><span><b>Lift and air out</b><br>Wait until the smell is gone.</span><span class="t" id="t-3"></span></li>
+        <li id="step-1"><span class="n">1</span><span data-i18n-html="step1"><b>Smell clean air</b><br>Hold the box away from food.</span><span class="t" id="t-1"></span></li>
+        <li id="step-2"><span class="n">2</span><span data-i18n-html="step2"><b>Cover the food</b><br>Box upside down, 3–5 cm above it.</span><span class="t" id="t-2"></span></li>
+        <li id="step-3"><span class="n">3</span><span data-i18n-html="step3"><b>Lift and air out</b><br>Wait until the smell is gone.</span><span class="t" id="t-3"></span></li>
       </ol>
       <div class="meter" aria-live="polite">
-        <div class="meter-head"><b>Smell strength</b><span id="meter-word">–</span></div>
+        <div class="meter-head"><b data-i18n="meter_title">Smell strength</b><span id="meter-word">–</span></div>
         <div class="bar-wrap"><div class="bar"></div><div class="bar-fill" id="meter-fill"></div></div>
-        <div class="scale"><span>none</span><span>some</span><span>strong</span></div>
+        <div class="scale"><span data-i18n="w_none">none</span><span data-i18n="w_some">some</span><span data-i18n="w_strong">strong</span></div>
         <p class="verdict" id="verdict">Press a button to start a test.</p>
-        <p class="note">Simulated food. On the real board, the FRESH / SPOILING / DO-NOT-SELL grade comes from a model trained on real spoilage recordings.</p>
+        <p class="note" data-i18n="note">Simulated food. On the real board, the FRESH / SPOILING / DO-NOT-SELL grade comes from a model trained on real spoilage recordings.</p>
       </div>
     </div>
   </div>
 
   <section class="block">
-    <h2>Inside the box</h2>
-    <p class="sub">Each gas sensor's voltage goes up when it smells its gas. A 10 kΩ / 20 kΩ divider brings it down to a level the UNO Q can read safely. The numbers below update live.</p>
+    <h2 data-i18n="inside_h">Inside the box</h2>
+    <p class="sub" data-i18n="inside_sub">Each gas sensor's voltage goes up when it smells its gas. A 10 kΩ / 20 kΩ divider brings it down to a level the UNO Q can read safely. The numbers below update live.</p>
     <div class="card scroll-x">
 <svg viewBox="0 0 900 470" role="img" aria-label="PGAS wiring to the Arduino UNO Q: MQ-135, MQ-3 and MQ-2 through 10k/20k dividers to A0-A2; DHT22 with 10k pull-up to D2; on-board 8x13 LED matrix">
       <text x="40" y="22" class="small">MQ heaters on 5 V · common ground · each AO through 10 kΩ (top) / 20 kΩ (bottom) · DHT22 on 3.3 V</text>
@@ -186,28 +190,28 @@ pre { margin: 0; background: #0d110b; color: #cfe8b0; font: 12px/1.4 var(--mono)
   </section>
 
   <details class="eng">
-    <summary>Engineer view: sliders, raw readings, Bridge messages</summary>
+    <summary data-i18n="eng_summary">Engineer view: sliders, raw readings, Bridge messages</summary>
     <div class="eng-grid">
       <div class="card">
-        <h3>Gas at each MQ module (module output, volts)</h3>
+        <h3 data-i18n="eng_gas">Gas at each MQ module (module output, volts)</h3>
         <div class="row"><label for="sl-mq135">MQ-135</label><input id="sl-mq135" type="range" min="0" max="5" step="0.01"><output id="out-mq135"></output></div>
         <div class="row"><label for="sl-mq3">MQ-3</label><input id="sl-mq3" type="range" min="0" max="5" step="0.01"><output id="out-mq3"></output></div>
         <div class="row"><label for="sl-mq2">MQ-2</label><input id="sl-mq2" type="range" min="0" max="5" step="0.01"><output id="out-mq2"></output></div>
         <h3 style="margin-top:12px">DHT22</h3>
         <div class="row"><label for="sl-temp">Temp</label><input id="sl-temp" type="range" min="-10" max="50" step="0.1" value="26.5"><output id="val-temp"></output></div>
         <div class="row"><label for="sl-rh">RH</label><input id="sl-rh" type="range" min="0" max="100" step="1" value="65"><output id="val-rh"></output></div>
-        <label><input id="dht-conn" type="checkbox" checked> DHT22 connected</label>
+        <label><input id="dht-conn" type="checkbox" checked> <span data-i18n="dht_conn">DHT22 connected</span></label>
         <div class="btns">
-          <button id="reset-air">Clean air</button>
+          <button id="reset-air" data-i18n="btn_air">Clean air</button>
           <button id="pause">Pause MCU</button>
-          <label style="align-self:center"><input id="short" type="checkbox" checked> short demo timing (10 s · 20 s instead of 30 s · 60 s)</label>
+          <label style="align-self:center"><input id="short" type="checkbox" checked> <span data-i18n="short">short demo timing (10 s · 20 s instead of 30 s · 60 s)</span></label>
         </div>
       </div>
       <div class="card">
-        <h3>What the sketch reports over the Bridge</h3>
+        <h3 data-i18n="eng_reports">What the sketch reports over the Bridge</h3>
         <p class="stat">MCU time <span id="simtime">0</span> s · samples <span id="samples">0</span> · draw calls / matrix.draw() <span id="draws">0</span></p>
         <table>
-          <thead><tr><th>Sensor</th><th>pin</th><th>raw (14-bit)</th><th>module V</th></tr></thead>
+          <thead><tr><th data-i18n="th_sensor">Sensor</th><th data-i18n="th_pin">pin</th><th data-i18n="th_raw">raw (14-bit)</th><th data-i18n="th_mod">module V</th></tr></thead>
           <tbody>
             <tr><td>MQ-135 · A0</td><td id="vpin-mq135"></td><td id="raw-mq135"></td><td id="dec-mq135"></td></tr>
             <tr><td>MQ-3 · A1</td><td id="vpin-mq3"></td><td id="raw-mq3"></td><td id="dec-mq3"></td></tr>
@@ -215,16 +219,16 @@ pre { margin: 0; background: #0d110b; color: #cfe8b0; font: 12px/1.4 var(--mono)
             <tr><td>DHT22 · D2</td><td colspan="3" id="dec-dht"></td></tr>
           </tbody>
         </table>
-        <h3 style="margin-top:12px">Features of the last test (volts above clean air)</h3>
+        <h3 style="margin-top:12px" data-i18n="eng_feat">Features of the last test (volts above clean air)</h3>
         <table>
-          <thead><tr><th>Sensor</th><th>d_median</th><th>d_peak</th><th>d_mean</th></tr></thead>
+          <thead><tr><th data-i18n="th_sensor">Sensor</th><th>d_median</th><th>d_peak</th><th>d_mean</th></tr></thead>
           <tbody id="result"><tr><td colspan="4" style="text-align:left">run a test</td></tr></tbody>
         </table>
       </div>
-      <div class="card"><h3>Bridge traffic (MCU ⇄ Linux)</h3><pre id="bridge"></pre></div>
-      <div class="card"><h3>Linux side · session log</h3><pre id="log"></pre></div>
+      <div class="card"><h3 data-i18n="eng_bridge">Bridge traffic (MCU ⇄ Linux)</h3><pre id="bridge"></pre></div>
+      <div class="card"><h3 data-i18n="eng_log">Linux side · session log</h3><pre id="log"></pre></div>
     </div>
-    <p class="note">The UNO Q code path of <code>app/sketch/sketch.ino</code> runs on an emulated UNO Q MCU API (14-bit ADC, Bridge, LED matrix). The STM32 itself is not emulated. Food gas levels are simulation parameters, not measurements.</p>
+    <p class="note" data-i18n-html="eng_note">The UNO Q code path of <code>app/sketch/sketch.ino</code> runs on an emulated UNO Q MCU API (14-bit ADC, Bridge, LED matrix). The STM32 itself is not emulated. Food gas levels are simulation parameters, not measurements.</p>
   </details>
 </div>
 <script>
