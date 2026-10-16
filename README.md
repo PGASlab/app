@@ -55,6 +55,7 @@ flowchart LR
 * **MCU sketch** ([`app/sketch/sketch.ino`](app/sketch/sketch.ino)): reads A0–A2 and the DHT22 once a second, sends the readings to Linux over the Arduino Bridge, and draws the frames Linux sends back on the LED matrix.
 * **Linux app** ([`app/python/main.py`](app/python/main.py) + [`pgas/`](pgas)): runs the capture sessions, extracts features, classifies, writes advice, and stores every raw reading as CSV.
 * **CLI** ([`pgas/capture.py`](pgas/capture.py)): starts a capture from the board shell or from the Mac (`--host` / `--adb`). It needs only the standard library.
+* **Simulation**: [`sim/`](sim). Open `sim/web/pgas-circuit-sim.html` in a browser to run the real firmware inside the PGAS wiring, or use the Wokwi project, or the simavr end-to-end run that CI executes on every push.
 * **Mac**: trains the classifier ([`pgas/train.py`](pgas/train.py)) and makes the plots ([`pgas/plot.py`](pgas/plot.py)).
 
 The classifier decides the grade. The LLM only turns grade + deadline into a

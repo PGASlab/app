@@ -10,6 +10,23 @@ same code that runs on the UNO Q.
 Nothing produced by a simulation is a result. Simulation captures are written to
 a temporary folder, never to `data/raw/`.
 
+## 0. In the browser, offline: `sim/web/pgas-circuit-sim.html`
+
+Open the file in any browser (double-click; no server or internet needed). It
+runs the **real firmware** (`pgas.hex` built from `app/sketch/sketch.ino`)
+instruction by instruction in [avr8js](https://github.com/wokwi/avr8js), the
+open-source AVR emulator that Wokwi is built on, inside the PGAS wiring:
+
+- sliders for each MQ module output, with the 10k/20k divider voltages shown live on the diagram;
+- a DHT22 protocol model on D2 (the wire flashes on every read);
+- the serial monitor;
+- a hood-mode run on an 8 × 13 LED matrix.
+
+The hood panel is a browser port of `pgas/session.py` and `pgas/display.py`.
+The Python originals are what the board runs, and they are exercised by the
+simavr run below. Rebuild after changing the sketch:
+`sim/build_avr.sh <ArduinoCore-avr> build/sim && sim/web/build.sh build/sim/pgas.hex`.
+
 ## 1. In the browser: Wokwi (free, no install)
 
 1. Open <https://wokwi.com/projects/new/arduino-uno>. You don't need to log in to run it.

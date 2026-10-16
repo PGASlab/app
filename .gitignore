@@ -12,3 +12,7 @@ models/llm/
 # Local outbox for unsent notifications.
 data/outbox.jsonl
 .env
+
+# simulation build outputs
+sim/web/node_modules
+sim/web/build/
