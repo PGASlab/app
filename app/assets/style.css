@@ -86,3 +86,5 @@ canvas { display: block; width: 100%; height: 96px; margin-top: 8px; }
   color: var(--muted); font-size: 13px; padding-bottom: 24px;
 }
 .raw { font-family: var(--mono); }
+
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

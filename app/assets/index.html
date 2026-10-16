@@ -23,9 +23,11 @@
     </header>
 
     <main>
-      <div id="status" class="status wait" role="status" aria-live="polite">
+      <div id="status" class="status wait">
         <span class="dot" aria-hidden="true"></span>
         <span id="status-text" data-i18n="connecting">Connecting to the board…</span>
+        <!-- Screen readers hear only state changes, not the per-second counter. -->
+        <span id="status-live" class="sr-only" role="status"></span>
       </div>
 
       <section class="job" id="job" hidden>

@@ -18,6 +18,7 @@ const I18N = {
     disconnected: 'Lost the connection to the board. Reconnecting…',
     no_client: 'This page must be opened from the board (http://<board-name>.local:7000).',
     ok: (s) => `Live · last update ${s} s ago`,
+    live_ok: 'Receiving live data from the board.', live_stale: 'No data from the board. Check power, Wi-Fi and the PGAS app.',
     stale: (s) => `No data for ${s} s – check the board (power, Wi-Fi, PGAS app running).`,
     g_mq135: 'Ammonia / sulfides', g_mq3: 'Ethanol (alcohol)', g_mq2: 'Broad VOCs', g_dht: 'Air in the box',
     ago5: '5 min ago', now: 'now',
@@ -34,6 +35,7 @@ const I18N = {
     disconnected: '與板子的連線中斷，正在重新連線…',
     no_client: '請從板子開啟這個頁面（http://<板子名稱>.local:7000）。',
     ok: (s) => `即時 · ${s} 秒前更新`,
+    live_ok: '正在接收板子的即時資料。', live_stale: '板子沒有傳來資料，請檢查電源、Wi-Fi 和 PGAS 程式。',
     stale: (s) => `已經 ${s} 秒沒有資料 – 請檢查板子（電源、Wi-Fi、PGAS 程式是否在執行）。`,
     g_mq135: '氨氣／硫化物', g_mq3: '乙醇（酒精）', g_mq2: '揮發性有機物（VOCs）', g_dht: '盒內空氣',
     ago5: '5 分鐘前', now: '現在',
@@ -150,6 +152,9 @@ function renderStatus() {
   }
   el.className = `status ${cls}`;
   if (txt.textContent !== msg) txt.textContent = msg;
+  const state = cls === 'ok' ? T('live_ok') : cls === 'stale' ? T('live_stale') : msg;
+  const live = $('status-live');
+  if (live.textContent !== state) live.textContent = state;
   document.querySelector('.tiles').classList.toggle('stale-data', cls === 'stale');
 }
 
