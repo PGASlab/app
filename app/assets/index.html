@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>PGAS Live</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">
+        <span class="logo" aria-hidden="true">👃</span>
+        <div>
+          <h1>PGAS <span data-i18n="live">live</span></h1>
+          <p class="sub" data-i18n="sub">What the sensors smell right now</p>
+        </div>
+      </div>
+      <div class="lang" role="group" aria-label="Language">
+        <button id="lang-en" type="button" aria-pressed="true">EN</button>
+        <button id="lang-zh" type="button" aria-pressed="false">中文</button>
+      </div>
+    </header>
+
+    <main>
+      <div id="status" class="status wait" role="status" aria-live="polite">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="status-text" data-i18n="connecting">Connecting to the board…</span>
+      </div>
+
+      <section class="job" id="job" hidden>
+        <h2 data-i18n="job_h">Current test</h2>
+        <p id="job-name" class="job-name"></p>
+        <p id="job-line" class="job-line"></p>
+        <p id="job-result" class="job-result" hidden></p>
+      </section>
+
+      <section class="tiles">
+        <article class="tile gas" data-key="mq135_v" style="--c: var(--c-mq135)">
+          <header><h2>MQ-135</h2><span class="pin">A0</span></header>
+          <p class="gasname" data-i18n="g_mq135">Ammonia / sulfides</p>
+          <p class="value"><span class="num" id="v-mq135_v">—</span><span class="unit">V</span></p>
+          <canvas id="c-mq135_v" aria-hidden="true"></canvas>
+          <p class="axis"><span data-i18n="ago5">5 min ago</span><span data-i18n="now">now</span></p>
+        </article>
+        <article class="tile gas" data-key="mq3_v" style="--c: var(--c-mq3)">
+          <header><h2>MQ-3</h2><span class="pin">A1</span></header>
+          <p class="gasname" data-i18n="g_mq3">Ethanol (alcohol)</p>
+          <p class="value"><span class="num" id="v-mq3_v">—</span><span class="unit">V</span></p>
+          <canvas id="c-mq3_v" aria-hidden="true"></canvas>
+          <p class="axis"><span data-i18n="ago5">5 min ago</span><span data-i18n="now">now</span></p>
+        </article>
+        <article class="tile gas" data-key="mq2_v" style="--c: var(--c-mq2)">
+          <header><h2>MQ-2</h2><span class="pin">A2</span></header>
+          <p class="gasname" data-i18n="g_mq2">Broad VOCs</p>
+          <p class="value"><span class="num" id="v-mq2_v">—</span><span class="unit">V</span></p>
+          <canvas id="c-mq2_v" aria-hidden="true"></canvas>
+          <p class="axis"><span data-i18n="ago5">5 min ago</span><span data-i18n="now">now</span></p>
+        </article>
+        <article class="tile dht">
+          <header><h2>DHT22</h2><span class="pin">D2</span></header>
+          <p class="gasname" data-i18n="g_dht">Air in the box</p>
+          <div class="pair">
+            <p class="value"><span class="num" id="v-temp">—</span><span class="unit">°C</span></p>
+            <p class="value"><span class="num" id="v-rh">—</span><span class="unit">%RH</span></p>
+          </div>
+          <p class="note" id="dht-note" hidden data-i18n="dht_fail">The temperature sensor did not answer.</p>
+        </article>
+      </section>
+
+      <p class="hint" data-i18n="hint">Each gas sensor's voltage goes up when it smells its gas. Values are the MQ module output in volts, before the 10 kΩ / 20 kΩ divider.</p>
+
+    </main>
+
+    <footer class="foot">
+      <span data-i18n="foot">Served by the board over Wi-Fi · works offline</span>
+      <span id="raw" class="raw"></span>
+    </footer>
+
+    <script src="libs/socket.io.min.js"></script>
+    <script src="libs/arduino.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

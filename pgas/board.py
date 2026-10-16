@@ -5,6 +5,8 @@
 * A worker thread takes jobs from data/jobs/pending (written by
   `python -m pgas.capture`) and runs hood / continuous / selftest sessions.
 * Frames for the LED matrix go back to the sketch with Bridge.call("draw", ...).
+* With an optional `feed` (pgas.web.LiveFeed) every sample, job log line and
+  result is also pushed to the Wi-Fi dashboard served by the web_ui brick.
 * A continuous capture survives an app restart: its state is kept in
   data/jobs/continuous.json and the app resumes appending on start.
 """
@@ -68,7 +70,7 @@ class BridgeDisplay:
 
 class Runtime:
     def __init__(self, bridge=None, source: QueueSource | None = None, disp=None,
-                 data_dir: Path = config.DATA_DIR, analyze=None):
+                 data_dir: Path = config.DATA_DIR, analyze=None, feed=None):
         self.source = source or QueueSource()
         self.disp = disp or BridgeDisplay(bridge)
         self.data_dir = Path(data_dir)
@@ -78,6 +80,7 @@ class Runtime:
         self.busy = threading.Lock()
         self.stop_event = threading.Event()
         self.current: str | None = None
+        self.feed = feed  # pgas.web.LiveFeed or None; its methods never raise
         if analyze is None:
             from .pipeline import analyze
         self.analyze = analyze
@@ -87,6 +90,16 @@ class Runtime:
         ok = bool(dht_ok)
         self.source.put(Reading(time.time(), float(a0), float(a1), float(a2),
                                 float(temp_c) if ok else None, float(rh_pct) if ok else None))
+        if self.feed is not None:
+            self.feed.sample(a0, a1, a2, temp_c, rh_pct, dht_ok, job=self.current)
+
+    def _status(self, job_id: str, kind: str):
+        st = jobs.Status(self.jobs_dir, job_id, kind)
+        if self.feed is None:
+            return st
+        from .web import FeedStatus
+
+        return FeedStatus(st, self.feed)
 
     # --- job handling -------------------------------------------------------
     def poll_once(self) -> bool:
@@ -94,7 +107,7 @@ class Runtime:
         if job is None:
             return False
         kind = job["kind"]
-        st = jobs.Status(self.jobs_dir, job["id"], kind)
+        st = self._status(job["id"], kind)
         if kind == "stop":
             if self.current:
                 self.stop_event.set()
@@ -201,7 +214,7 @@ class Runtime:
             return
         self.busy.acquire()
         self.current = f"continuous job {state.job_id}"
-        st = jobs.Status(self.jobs_dir, state.job_id + "-resumed", "continuous")
+        st = self._status(state.job_id + "-resumed", "continuous")
         job = {"id": state.job_id, "kind": "continuous", "params": {"label": state.label}}
         threading.Thread(target=self._run, args=(job, st, state), daemon=True).start()
 
