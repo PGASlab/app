@@ -19,7 +19,7 @@ const FOODS = {
   spoiling: { amp: [0.70, 0.35, 0.55] },
   spoiled: { amp: [2.20, 1.40, 1.80] },
 };
-const MIN_GAS_RAW = 0.01 * 16383;  // below 1 % of full scale = gas sensor not detected (pgas/session.py)
+const MIN_GAS_RAW = 0.01 * FULL14;  // below 1 % of full scale = gas sensor not detected (pgas/session.py)
 const NO_DATA_MS = 3000;           // no Bridge sample for 3 s = MCU not answering
 const $ = (id) => document.getElementById(id);
 const state = { module: [...CLEAN_AIR], temp: 26.5, rh: 65, dht: true, mq: true, dhtAt: 0 };
@@ -228,8 +228,12 @@ function render() {
 // ------------------------------------------------------------------ main loop
 let last = 0;
 function frame(now) {
-  const dt = Math.min(0.1, (now - last) / 1000);
+  const gap = now - last;
+  const dt = Math.min(0.1, gap / 1000);
   last = now;
+  // Frames stop while the tab is in the background, and the emulated MCU stops
+  // with them. Don't count that pause against the no-data watchdog.
+  if (gap > 1000) S.lastAt += gap;
   if (mcu && running) {
     operatorTick(dt);
     pushInputs();
