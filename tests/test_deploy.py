@@ -2,6 +2,7 @@
 then start the deployed main.py with a fake arduino.app_utils module and
 drive a hood capture through the real CLI on the deployed copy."""
 
+import json
 import os
 import shutil
 import subprocess
@@ -51,6 +52,17 @@ FAKE_APP_UTILS = textwrap.dedent('''
                 user_loop()
 ''')
 
+# Fake arduino:web_ui brick: records every Socket.IO message as one JSON line.
+FAKE_WEB_UI = textwrap.dedent('''
+    import json, os
+    class WebUI:
+        def __init__(self, *a, **k):
+            self.log = open(os.environ["FAKE_WEB_LOG"], "a", buffering=1)
+        def on_connect(self, cb): self.connect_cb = cb
+        def send_message(self, event, message, room=None):
+            self.log.write(json.dumps({"event": event, "message": message}) + "\\n")
+''')
+
 
 def test_deploy_and_run_on_fake_board(tmp_path):
     app_dir = tmp_path / "ArduinoApps" / "pgas"
@@ -60,7 +72,9 @@ def test_deploy_and_run_on_fake_board(tmp_path):
                          env=env, capture_output=True, text=True, timeout=60)
     assert out.returncode == 0, out.stderr
     for rel in ("app.yaml", "sketch/sketch.ino", "sketch/sketch.yaml", "python/main.py",
-                "python/requirements.txt", "python/pgas/capture.py", "data/jobs/pending"):
+                "python/requirements.txt", "python/pgas/capture.py", "python/pgas/web.py",
+                "assets/index.html", "assets/app.js", "assets/style.css", "assets/libs/socket.io.min.js",
+                "assets/libs/arduino.js", "data/jobs/pending"):
         assert (app_dir / rel).exists(), rel
     assert not list(app_dir.rglob("__pycache__"))
     log = (tmp_path / "cli.log").read_text()
@@ -71,7 +85,11 @@ def test_deploy_and_run_on_fake_board(tmp_path):
     fake.mkdir(parents=True)
     (fake / "__init__.py").write_text("")
     (fake / "app_utils.py").write_text(FAKE_APP_UTILS)
-    py = dict(os.environ, PYTHONPATH=str(tmp_path / "fake_site"))
+    (fake / "app_bricks").mkdir()
+    (fake / "app_bricks" / "__init__.py").write_text("")
+    (fake / "app_bricks" / "web_ui.py").write_text(FAKE_WEB_UI)
+    web_log = tmp_path / "web.jsonl"
+    py = dict(os.environ, PYTHONPATH=str(tmp_path / "fake_site"), FAKE_WEB_LOG=str(web_log))
     proc = subprocess.Popen([sys.executable, "main.py"], cwd=app_dir / "python", env=py,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     try:
@@ -85,3 +103,12 @@ def test_deploy_and_run_on_fake_board(tmp_path):
     assert "STEP 1/3" in cli.stdout and "MOVE NOW" in cli.stdout and "STEP 3/3" in cli.stdout
     csvs = list((app_dir / "data" / "raw").glob("*_hood_fresh_test.csv"))
     assert len(csvs) == 1
+
+    # The dashboard feed got live samples and the hood job's lines + result.
+    msgs = [json.loads(line) for line in web_log.read_text().splitlines()]
+    samples = [m["message"] for m in msgs if m["event"] == "pgas_sample"]
+    job_msgs = [m["message"] for m in msgs if m["event"] == "pgas_job"]
+    assert samples and {"mq135_v", "mq3_v", "mq2_v", "temp_c", "rh_pct", "raw", "job"} <= set(samples[0])
+    assert any(s["job"] and s["job"].startswith("hood job") for s in samples)
+    assert any("STEP 1/3" in (j.get("line") or "") for j in job_msgs)
+    assert job_msgs[-1]["state"] in ("done", "failed")

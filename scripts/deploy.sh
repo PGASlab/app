@@ -4,7 +4,8 @@
 #   scripts/deploy.sh --adb               # over USB
 #   scripts/deploy.sh pgas.local --boot   # also start PGAS automatically at power-on
 #
-# Copies app.yaml, the sketch, python/main.py, the pgas package and models/
+# Copies app.yaml, the sketch, python/main.py, the pgas package, the web
+# dashboard (assets/, served by the web_ui brick on port 7000) and models/
 # into ~/ArduinoApps/pgas. Never touches the board's data/ folder.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -17,6 +18,7 @@ trap 'rm -rf "$STAGE"' EXIT
 mkdir -p "$STAGE/python" "$STAGE/models"
 cp app/app.yaml "$STAGE/"
 cp -R app/sketch "$STAGE/"
+cp -R app/assets "$STAGE/assets"   # web_ui brick serves /app/assets
 cp app/python/main.py app/python/requirements.txt "$STAGE/python/"
 cp -R pgas "$STAGE/python/pgas"
 find "$STAGE" -name '__pycache__' -prune -exec rm -rf {} +

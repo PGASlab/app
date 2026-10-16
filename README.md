@@ -146,6 +146,24 @@ Every capture is `data/raw/<YYYYmmddTHHMMSS>_<mode>_<label>.csv`, plus a JSON
 sidecar holding the settings and the on-board result. Labelling rules are in
 [`docs/labeling.md`](docs/labeling.md).
 
+## Live dashboard over Wi-Fi
+
+While PGAS runs, the board serves a live page with the official App Lab
+`arduino:web_ui` brick. On a phone or Mac on the **same Wi-Fi**, open:
+
+```
+http://<board-name>.local:7000
+```
+
+(or `http://<board-ip>:7000` if `.local` names don't resolve on your network).
+The page shows the three gas sensors (module output in volts) and the DHT22
+temperature and humidity, refreshed every second, with a 5-minute chart per gas
+sensor and the current test's steps and grade. If no reading arrives for 3 s
+it shows a "no data – check the board" warning. English / 繁體中文 toggle.
+It needs no internet: the page and its Socket.IO client
+([`app/assets`](app/assets), copied by `scripts/deploy.sh`) are served by the
+board. The data comes from [`pgas/web.py`](pgas/web.py).
+
 ## Results
 
 | | |

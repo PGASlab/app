@@ -6,3 +6,4 @@ bricks:
       model: llamacpp:gemma-3-1b-it-Q4_0
       variables:
         LLAMA_ARG_CTX_SIZE: "2048"
+  - arduino:web_ui
