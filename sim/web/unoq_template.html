@@ -5,84 +5,152 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PGAS UNO Q Simulation</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
+/* Layout: a "nose" hero for anyone (big LED + 3 steps + smell meter), then the circuit, then an engineer drawer. */
 :root {
-  --bg: #f7f8f3; --surface: #ffffff; --ink: #14170f; --muted: #5a5f52; --line: #d9dccf;
-  --lime: #b5e06c; --lime-ink: #3d5a10; --pink: #f4a3b4; --pink-ink: #b8325a; --purple: #5b3b8c;
-  --wire: #3a3f33; --led-off: #1c2430; --led-on: #8fd3ff; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --bg: #f6f8ef; --surface: #ffffff; --ink: #1b1d16; --muted: #5d6253; --line: #dde2cf;
+  --lime: #b5e06c; --lime-deep: #6d9a24; --lime-ink: #3d5a10; --pink: #f4a3b4; --pink-deep: #c9466b; --pink-ink: #b8325a;
+  --nose: #5b3b8c; --wire: #3a3f33; --panel: #0b141a; --led-off: #16303c; --led-on: #8fd3ff;
+  --ok: #3f8f2f; --warn: #c98500; --bad: #c9466b;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #12140f; --surface: #1b1e17; --ink: #eef1e6; --muted: #a7ad9b; --line: #33382b;
-    --lime-ink: #c8ef86; --pink-ink: #ff9ab6; --wire: #c9cfbd; --led-off: #0e141c; color-scheme: dark;
+    --bg: #11140d; --surface: #1a1e15; --ink: #eef2e4; --muted: #a9b09b; --line: #31372a;
+    --lime-ink: #c8ef86; --pink-ink: #ff9ab6; --nose: #c7b0f0; --wire: #c9cfbd; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #12140f; --surface: #1b1e17; --ink: #eef1e6; --muted: #a7ad9b; --line: #33382b;
-  --lime-ink: #c8ef86; --pink-ink: #ff9ab6; --wire: #c9cfbd; --led-off: #0e141c; color-scheme: dark;
+  --bg: #11140d; --surface: #1a1e15; --ink: #eef2e4; --muted: #a9b09b; --line: #31372a;
+  --lime-ink: #c8ef86; --pink-ink: #ff9ab6; --nose: #c7b0f0; --wire: #c9cfbd; color-scheme: dark;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
-header { padding-block: 18px 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); max-width: 1212px; margin: 0 auto; }
-h1 { font-size: 20px; margin: 0 0 4px; }
-.sub { color: var(--muted); margin: 0; }
-.badge { display: inline-block; background: var(--pink); color: #3a0a18; font-weight: 600; font-size: 12px; padding: 2px 8px; border-radius: 99px; margin-left: 6px; vertical-align: 2px; }
-main { max-width: 1212px; margin: 0 auto; padding-block: 0 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 14px; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; }
-.card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 10px; }
-.span2 { grid-column: 1 / -1; }
-svg { width: 100%; height: auto; display: block; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); }
+.wrap { max-width: 1160px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.top { display: flex; align-items: center; gap: 12px; padding-block: 16px 8px; }
+.top img { width: 44px; height: 44px; border-radius: 12px; }
+.brand { font: 800 20px/1.1 var(--display); }
+.brand small { display: block; font: 500 13px var(--body); color: var(--muted); }
+.chip { margin-left: auto; background: var(--pink); color: #3a0a18; font: 600 12px var(--body); padding: 4px 10px; border-radius: 99px; white-space: nowrap; }
+
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 20px; padding-block: 12px 24px; align-items: start; }
+.screen { background: var(--panel); border-radius: 20px; padding: 22px; box-shadow: 0 0 0 6px var(--lime) inset, 0 10px 30px rgba(20, 40, 10, .18); }
+#bigmatrix { display: grid; grid-template-columns: repeat(13, 1fr); gap: 6px; }
+#bigmatrix i { aspect-ratio: 1; border-radius: 50%; background: var(--led-off); }
+#bigmatrix i.on { background: var(--led-on); box-shadow: 0 0 10px var(--led-on); }
+.screen-cap { color: #cfe6f2; font: 13px var(--body); margin-top: 14px; display: flex; justify-content: space-between; gap: 8px; }
+h1 { font: 800 clamp(28px, 4vw, 40px)/1.08 var(--display); margin: 0 0 8px; text-wrap: balance; }
+.lede { color: var(--muted); margin: 0 0 16px; max-width: 52ch; }
+.go { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+button { font: inherit; cursor: pointer; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 8px 14px; }
+button:focus-visible, summary:focus-visible, input:focus-visible { outline: 3px solid var(--nose); outline-offset: 2px; }
+.big { font: 700 17px var(--display); padding: 14px 20px; border: 0; }
+.big.fresh { background: var(--lime); color: #1d2a07; }
+.big.bad { background: var(--pink); color: #3a0a18; }
+.steps { list-style: none; padding: 0; margin: 0 0 16px; display: grid; gap: 8px; }
+.steps li { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); }
+.steps .n { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 700 14px var(--display); background: var(--line); color: var(--ink); }
+.steps li.active { border-color: var(--nose); color: var(--ink); box-shadow: 0 0 0 2px var(--nose) inset; }
+.steps li.active .n { background: var(--nose); color: #fff; }
+.steps li.done .n { background: var(--lime-deep); color: #fff; }
+.steps b { color: var(--ink); font-weight: 600; }
+.steps .t { font: 600 14px var(--mono); font-variant-numeric: tabular-nums; }
+.meter { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+.meter-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.meter-head span { font: 700 18px var(--display); }
+.bar { position: relative; height: 16px; border-radius: 99px; margin: 10px 0 6px; background: linear-gradient(90deg, var(--ok) 0 10%, var(--warn) 10% 40%, var(--bad) 40% 100%); opacity: .25; }
+.bar-wrap { position: relative; }
+.bar-fill { position: absolute; left: 0; top: 10px; height: 16px; border-radius: 99px; background: linear-gradient(90deg, var(--ok), var(--warn) 30%, var(--bad) 70%); transition: width .4s; width: 0; }
+.scale { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
+.verdict { margin: 10px 0 0; font-weight: 600; }
+.note { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+
+section.block { padding-block: 8px 20px; }
+h2 { font: 800 22px var(--display); margin: 0 0 4px; }
+.sub { color: var(--muted); margin: 0 0 12px; max-width: 70ch; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; min-width: 0; }
 .scroll-x { overflow-x: auto; }
+svg { width: 100%; height: auto; display: block; }
 .scroll-x svg { min-width: 720px; }
-svg text { fill: var(--ink); font: 12px system-ui, sans-serif; }
+svg text { fill: var(--ink); font: 12px var(--body); }
 svg .small { font-size: 10.5px; fill: var(--muted); }
 svg .val { font: 600 12px var(--mono); fill: var(--pink-ink); }
 svg .wire { stroke: var(--wire); stroke-width: 2; fill: none; }
 svg .sig { stroke: var(--lime-ink); fill: none; transition: stroke-width .3s; }
 svg .box { fill: var(--surface); stroke: var(--wire); stroke-width: 1.5; }
-svg .board { fill: #0f6b74; stroke: #0a4d54; }
-svg .board-t { fill: #e8fbff; }
 svg .res { fill: var(--surface); stroke: var(--wire); stroke-width: 1.5; }
 svg #wire-d2.active { stroke: var(--pink-ink); stroke-width: 4; }
-.row { display: grid; grid-template-columns: 70px 1fr 64px; gap: 8px; align-items: center; margin: 6px 0; }
-.row label { font-weight: 600; }
-.row output { font: 12px var(--mono); text-align: right; }
-input[type=range] { width: 100%; accent-color: #7fae2e; }
-.btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-button { font: inherit; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 6px 12px; border-radius: 8px; cursor: pointer; }
-button.primary { background: var(--lime); color: #1d2a07; border-color: #94c24c; font-weight: 600; }
-button.danger { background: var(--pink); color: #3a0a18; border-color: #e07d94; font-weight: 600; }
-table { border-collapse: collapse; width: 100%; font: 12px var(--mono); }
-th, td { text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--line); }
-th:first-child, td:first-child { text-align: left; }
-th { color: var(--muted); font-weight: 600; font-family: system-ui, sans-serif; }
-pre { margin: 0; background: #0d110b; color: #cfe8b0; font: 12px/1.4 var(--mono); padding: 10px; border-radius: 8px; height: 220px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
-#matrix-unused { width: 300px; max-width: 100%; display: grid; grid-template-columns: repeat(13, 1fr); gap: 4px; background: #0b1016; padding: 10px; border-radius: 8px; }
-#matrix i { aspect-ratio: 1; border-radius: 50%; background: var(--led-off); }
-#matrix i.on { background: var(--led-on); box-shadow: 0 0 6px var(--led-on); }
-.stat { font: 12px var(--mono); color: var(--muted); }
-.note { color: var(--muted); font-size: 12.5px; margin: 8px 0 0; }
-.flex { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start; }
-@media (max-width: 820px) { main { grid-template-columns: 1fr; } }
 svg .unoq { fill: #0b5f73; stroke: #07485a; stroke-width: 2; }
 svg .chip { fill: #1d2228; stroke: #3c4650; }
 svg .chip-t { fill: #e6edf3; font-size: 11px; }
 svg .pcb-t { fill: #d8f3ff; }
 svg .led { fill: #12303d; }
-svg .led.on { fill: #8fd3ff; filter: drop-shadow(0 0 3px #8fd3ff); }
+svg .led.on { fill: #8fd3ff; }
 svg .bridge { stroke: #f4a3b4; stroke-width: 2; fill: none; stroke-dasharray: 5 4; }
+
+details.eng { margin-block: 4px 32px; }
+details.eng summary { cursor: pointer; font: 700 17px var(--display); padding: 12px 14px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+.eng-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; margin-top: 14px; }
+.eng-grid h3 { font: 600 12px var(--body); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 0 0 8px; }
+.row { display: grid; grid-template-columns: 70px 1fr 64px; gap: 8px; align-items: center; margin: 6px 0; }
+.row label { font-weight: 600; }
+.row output { font: 12px var(--mono); text-align: right; }
+input[type=range] { width: 100%; accent-color: var(--lime-deep); }
+table { border-collapse: collapse; width: 100%; font: 12px var(--mono); font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--muted); font: 600 12px var(--body); }
+pre { margin: 0; background: #0d110b; color: #cfe8b0; font: 12px/1.4 var(--mono); padding: 10px; border-radius: 8px; height: 200px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
+.stat { font: 12px var(--mono); color: var(--muted); }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+@media (max-width: 820px) { .hero, .eng-grid { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .bar-fill, svg .sig { transition: none; } }
 </style>
 </head>
 <body>
-<header>
-  <h1>PGAS on the Arduino UNO Q <span class="badge">SIMULATION · not real measurements</span></h1>
-  <p class="sub">The UNO Q code path of <code>app/sketch/sketch.ino</code> (14-bit ADC, <code>Bridge.notify / Bridge.provide("draw")</code>, <code>Arduino_LED_Matrix</code>) compiled with emscripten against an emulated UNO Q MCU API, wired to the PGAS sensors. MCU time <span class="stat"><span id="simtime">0</span> s</span> · samples <span class="stat" id="samples">0</span> · draw calls / matrix.draw() <span class="stat" id="draws">0</span></p>
-</header>
-<main>
-  <section class="card span2">
-    <h2>Wiring and board (live)</h2>
-    <div class="scroll-x">
-    <svg viewBox="0 0 900 470" role="img" aria-label="PGAS wiring to the Arduino UNO Q: MQ-135, MQ-3 and MQ-2 through 10k/20k dividers to A0-A2; DHT22 with 10k pull-up to D2; on-board 8x13 LED matrix">
+<div class="wrap">
+  <div class="top">
+    <img alt="PGAS logo" src="data:image/png;base64,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">
+    <div class="brand">PGAS · AI Nose<small>The modern silver spoon, on an Arduino UNO Q</small></div>
+    <span class="chip">Simulation</span>
+  </div>
+
+  <div class="hero">
+    <div class="screen" aria-label="UNO Q LED matrix">
+      <div id="bigmatrix"></div>
+      <div class="screen-cap"><span>The board's 8 × 13 LED screen</span><span id="phase">ready</span></div>
+    </div>
+    <div>
+      <h1>Is this food still OK to sell?</h1>
+      <p class="lede">PGAS sniffs the air above the food with three gas sensors. Pick a sample, then follow the screen.</p>
+      <div class="go">
+        <button class="big fresh" data-hood="fresh">Test fresh chicken</button>
+        <button class="big bad" data-hood="swill">Test spoiled leftovers</button>
+      </div>
+      <ol class="steps">
+        <li id="step-1"><span class="n">1</span><span><b>Smell clean air</b><br>Hold the box away from food.</span><span class="t" id="t-1"></span></li>
+        <li id="step-2"><span class="n">2</span><span><b>Cover the food</b><br>Box upside down, 3–5 cm above it.</span><span class="t" id="t-2"></span></li>
+        <li id="step-3"><span class="n">3</span><span><b>Lift and air out</b><br>Wait until the smell is gone.</span><span class="t" id="t-3"></span></li>
+      </ol>
+      <div class="meter" aria-live="polite">
+        <div class="meter-head"><b>Smell strength</b><span id="meter-word">–</span></div>
+        <div class="bar-wrap"><div class="bar"></div><div class="bar-fill" id="meter-fill"></div></div>
+        <div class="scale"><span>none</span><span>some</span><span>strong</span></div>
+        <p class="verdict" id="verdict">Press a button to start a test.</p>
+        <p class="note">Simulated food. On the real board, the FRESH / SPOILING / DO-NOT-SELL grade comes from a model trained on real spoilage recordings.</p>
+      </div>
+    </div>
+  </div>
+
+  <section class="block">
+    <h2>Inside the box</h2>
+    <p class="sub">Each gas sensor's voltage goes up when it smells its gas. A 10 kΩ / 20 kΩ divider brings it down to a level the UNO Q can read safely. The numbers below update live.</p>
+    <div class="card scroll-x">
+<svg viewBox="0 0 900 470" role="img" aria-label="PGAS wiring to the Arduino UNO Q: MQ-135, MQ-3 and MQ-2 through 10k/20k dividers to A0-A2; DHT22 with 10k pull-up to D2; on-board 8x13 LED matrix">
       <text x="40" y="22" class="small">MQ heaters on 5 V · common ground · each AO through 10 kΩ (top) / 20 kΩ (bottom) · DHT22 on 3.3 V</text>
       <rect x="560" y="40" width="320" height="410" rx="14" class="unoq"/>
       <text x="580" y="438" class="pcb-t" style="font-weight:700">Arduino UNO Q</text>
@@ -117,47 +185,48 @@ svg .bridge { stroke: #f4a3b4; stroke-width: 2; fill: none; stroke-dasharray: 5 
     </div>
   </section>
 
-  <section class="card">
-    <h2>Gas at each MQ module (module output, volts)</h2>
-    <div class="row"><label for="sl-mq135">MQ-135</label><input id="sl-mq135" type="range" min="0" max="5" step="0.01"><output id="out-mq135"></output></div>
-    <div class="row"><label for="sl-mq3">MQ-3</label><input id="sl-mq3" type="range" min="0" max="5" step="0.01"><output id="out-mq3"></output></div>
-    <div class="row"><label for="sl-mq2">MQ-2</label><input id="sl-mq2" type="range" min="0" max="5" step="0.01"><output id="out-mq2"></output></div>
-    <h2 style="margin-top:14px">DHT22</h2>
-    <div class="row"><label for="sl-temp">Temp</label><input id="sl-temp" type="range" min="-10" max="50" step="0.1" value="26.5"><output id="val-temp"></output></div>
-    <div class="row"><label for="sl-rh">RH</label><input id="sl-rh" type="range" min="0" max="100" step="1" value="65"><output id="val-rh"></output></div>
-    <label><input id="dht-conn" type="checkbox" checked> DHT22 connected</label>
-    <h2 style="margin-top:14px">What the sketch reports over the Bridge</h2>
-    <table>
-      <thead><tr><th>Sensor</th><th>pin</th><th>raw (14-bit)</th><th>decoded module V</th></tr></thead>
-      <tbody>
-        <tr><td>MQ-135 · A0</td><td id="vpin-mq135"></td><td id="raw-mq135"></td><td id="dec-mq135"></td></tr>
-        <tr><td>MQ-3 · A1</td><td id="vpin-mq3"></td><td id="raw-mq3"></td><td id="dec-mq3"></td></tr>
-        <tr><td>MQ-2 · A2</td><td id="vpin-mq2"></td><td id="raw-mq2"></td><td id="dec-mq2"></td></tr>
-        <tr><td>DHT22 · D2</td><td colspan="3" id="dec-dht"></td></tr>
-      </tbody>
-    </table>
-  </section>
-
-  <section class="card">
-    <h2>Hood mode</h2>
-    <div><span class="stat">phase</span> <b id="phase">idle</b></div>
-    <div class="btns">
-      <button class="primary" data-hood="fresh">Hood over fresh chicken</button>
-      <button class="danger" data-hood="swill">Hood over swill</button>
-      <button id="reset-air">Clean air</button>
-      <button id="pause">Pause MCU</button>
+  <details class="eng">
+    <summary>Engineer view: sliders, raw readings, Bridge messages</summary>
+    <div class="eng-grid">
+      <div class="card">
+        <h3>Gas at each MQ module (module output, volts)</h3>
+        <div class="row"><label for="sl-mq135">MQ-135</label><input id="sl-mq135" type="range" min="0" max="5" step="0.01"><output id="out-mq135"></output></div>
+        <div class="row"><label for="sl-mq3">MQ-3</label><input id="sl-mq3" type="range" min="0" max="5" step="0.01"><output id="out-mq3"></output></div>
+        <div class="row"><label for="sl-mq2">MQ-2</label><input id="sl-mq2" type="range" min="0" max="5" step="0.01"><output id="out-mq2"></output></div>
+        <h3 style="margin-top:12px">DHT22</h3>
+        <div class="row"><label for="sl-temp">Temp</label><input id="sl-temp" type="range" min="-10" max="50" step="0.1" value="26.5"><output id="val-temp"></output></div>
+        <div class="row"><label for="sl-rh">RH</label><input id="sl-rh" type="range" min="0" max="100" step="1" value="65"><output id="val-rh"></output></div>
+        <label><input id="dht-conn" type="checkbox" checked> DHT22 connected</label>
+        <div class="btns">
+          <button id="reset-air">Clean air</button>
+          <button id="pause">Pause MCU</button>
+          <label style="align-self:center"><input id="short" type="checkbox" checked> short demo timing (10 s · 20 s instead of 30 s · 60 s)</label>
+        </div>
+      </div>
+      <div class="card">
+        <h3>What the sketch reports over the Bridge</h3>
+        <p class="stat">MCU time <span id="simtime">0</span> s · samples <span id="samples">0</span> · draw calls / matrix.draw() <span id="draws">0</span></p>
+        <table>
+          <thead><tr><th>Sensor</th><th>pin</th><th>raw (14-bit)</th><th>module V</th></tr></thead>
+          <tbody>
+            <tr><td>MQ-135 · A0</td><td id="vpin-mq135"></td><td id="raw-mq135"></td><td id="dec-mq135"></td></tr>
+            <tr><td>MQ-3 · A1</td><td id="vpin-mq3"></td><td id="raw-mq3"></td><td id="dec-mq3"></td></tr>
+            <tr><td>MQ-2 · A2</td><td id="vpin-mq2"></td><td id="raw-mq2"></td><td id="dec-mq2"></td></tr>
+            <tr><td>DHT22 · D2</td><td colspan="3" id="dec-dht"></td></tr>
+          </tbody>
+        </table>
+        <h3 style="margin-top:12px">Features of the last test (volts above clean air)</h3>
+        <table>
+          <thead><tr><th>Sensor</th><th>d_median</th><th>d_peak</th><th>d_mean</th></tr></thead>
+          <tbody id="result"><tr><td colspan="4" style="text-align:left">run a test</td></tr></tbody>
+        </table>
+      </div>
+      <div class="card"><h3>Bridge traffic (MCU ⇄ Linux)</h3><pre id="bridge"></pre></div>
+      <div class="card"><h3>Linux side · session log</h3><pre id="log"></pre></div>
     </div>
-    <label style="display:block;margin-top:8px"><input id="short" type="checkbox" checked> short demo timing (A 10 s · H 20 s instead of 30 s · 60 s)</label>
-    <table style="margin-top:10px">
-      <thead><tr><th>Feature (V)</th><th>d_median</th><th>d_peak</th><th>d_mean</th></tr></thead>
-      <tbody id="result"><tr><td colspan="4" style="text-align:left;color:var(--muted)">run a hood capture</td></tr></tbody>
-    </table>
-    <p class="note">Watch the LED matrix on the board: every frame goes Linux → <code>Bridge.call("draw")</code> → the sketch's <code>draw()</code> → <code>matrix.draw()</code>. Food gas levels and the virtual operator are simulation parameters. The grade comes from the ONNX model trained on real captures, so it is not shown.</p>
-  </section>
-
-  <section class="card"><h2>Bridge traffic (MCU ⇄ Linux)</h2><pre id="bridge"></pre></section>
-  <section class="card"><h2>Linux side · session log</h2><pre id="log"></pre></section>
-</main>
+    <p class="note">The UNO Q code path of <code>app/sketch/sketch.ino</code> runs on an emulated UNO Q MCU API (14-bit ADC, Bridge, LED matrix). The STM32 itself is not emulated. Food gas levels are simulation parameters, not measurements.</p>
+  </details>
+</div>
 <script>
 // sensor rows of the wiring diagram
 (function () {

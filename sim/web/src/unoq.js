@@ -80,9 +80,10 @@ const D = () => (S.short ? { A: 10, M: 5, H: 20, V: 60 } : { A: 30, M: 5, H: 60,
 const volts = (raw) => raw / FULL14 * VREF / DIV;
 const median = (a) => { const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 function startHood(food) {
+  finalRise = null;
   Object.assign(S, { phase: 'A', i: 0, base: [[], [], []], peak: [-1e9, -1e9, -1e9], held: 0, rows: [], food, short: $('short').checked, result: null });
   op.target = 0;
-  $('result').innerHTML = '<tr><td colspan="4" style="text-align:left;color:var(--muted)">capturing…</td></tr>';
+  $('result').innerHTML = '<tr><td colspan="4" style="text-align:left">capturing…</td></tr>';
   log(`$ python3 -m pgas.capture --mode hood --label ${food === 'swill' ? 'swill_sim' : 'fresh_sim_chicken'}`);
   log('STEP 1/3: hold the box in open air, away from food');
 }
@@ -118,6 +119,7 @@ function finish(recovered) {
   const env = ex.filter((r) => r.ok);
   S.phase = 'done';
   S.result = feats;
+  finalRise = Math.max(...feats.map((f) => f.dpeak));
   show(checkFrame());
   log(recovered ? 'readings back to baseline' : 'recover timeout');
   log('features: ' + feats.map((f) => `${f.s.toUpperCase()} d_peak=${f.dpeak.toFixed(3)} V`).join(', ')
@@ -160,8 +162,14 @@ function render() {
   $('val-rh').textContent = state.rh.toFixed(0) + ' %';
   $('dec-dht').textContent = latest ? (latest[5] ? `${latest[3].toFixed(1)} °C / ${latest[4].toFixed(1)} %` : 'no valid reading (dht_ok = 0)') : '–';
   $('wire-d2').classList.toggle('active', performance.now() - state.dhtAt < 250);
-  $('phase').textContent = { idle: 'idle', A: 'A · ambient baseline', M: 'M · move the box over the food', H: 'H · hood over the food', V: 'V · venting', done: 'done' }[S.phase];
-  for (let i = 0; i < 104; i++) $(`led-${i}`).setAttribute('class', matrix[i] ? 'led on' : 'led');
+  $('phase').textContent = { idle: 'ready', A: 'A · clean air', M: 'M · move the box', H: 'H · over the food', V: 'V · airing out', done: '✓ done' }[S.phase];
+  for (let i = 0; i < 104; i++) {
+    const on = matrix[i] > 0;
+    $(`led-${i}`).setAttribute('class', on ? 'led on' : 'led');
+    bigCells[i].classList.toggle('on', on);
+  }
+  renderSteps();
+  renderMeter();
 }
 
 // ------------------------------------------------------------------ main loop
@@ -178,7 +186,46 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
+// ------------------------------------------------------------------ plain-language hero
+let bigCells = [];
+const STEP_OF = { A: 1, M: 2, H: 2, V: 3 };
+function renderSteps() {
+  const d = D(), cur = STEP_OF[S.phase] || 0, done = S.phase === 'done';
+  const left = { A: d.A - S.i, M: d.M - S.i + d.H, H: d.H - S.i, V: null }[S.phase];
+  for (let n = 1; n <= 3; n++) {
+    const li = $(`step-${n}`);
+    li.classList.toggle('active', n === cur);
+    li.classList.toggle('done', done || (cur > n));
+    $(`t-${n}`).textContent = n === cur ? (left != null ? `${Math.max(0, left)} s` : 'waiting…') : (done || cur > n ? '✓' : '');
+  }
+}
+function smellRise() {
+  // Largest rise above the clean-air reading, over the three sensors (volts at the module).
+  if (!latest || !S.base[0].length) return 0;
+  const bm = S.base.map(median);
+  return Math.max(0, ...latest.slice(0, 3).map((raw, k) => volts(raw) - bm[k]));
+}
+function smellWord(r) { return r < 0.2 ? 'none' : r < 0.8 ? 'some' : 'strong'; }
+let finalRise = null;
+function renderMeter() {
+  const active = S.phase !== 'idle';
+  const r = S.phase === 'done' && finalRise != null ? finalRise : (active ? smellRise() : 0);
+  $('meter-fill').style.width = `${Math.min(100, r / 2 * 100)}%`;
+  $('meter-word').textContent = active ? smellWord(r) : '–';
+  if (S.phase === 'done') {
+    $('verdict').textContent = r >= 0.8
+      ? `Strong spoilage smell: the gas sensors rose ${r.toFixed(2)} V above clean air.`
+      : r >= 0.2 ? `Some smell: the gas sensors rose ${r.toFixed(2)} V above clean air.`
+        : `Barely any smell: the gas sensors rose only ${r.toFixed(2)} V above clean air.`;
+  } else if (active) {
+    $('verdict').textContent = { A: 'Step 1: measuring clean air…', M: 'Step 2: put the box over the food now.', H: 'Step 2: smelling the food…', V: 'Step 3: lift the box and let it air out.' }[S.phase];
+  }
+}
+
 function buildBoardLeds() {
+  const bm = $('bigmatrix');
+  for (let i = 0; i < 104; i++) bm.appendChild(document.createElement('i'));
+  bigCells = [...bm.children];
   const g = $('leds');
   for (let r = 0; r < 8; r++) for (let c = 0; c < 13; c++) {
     const el = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -198,7 +245,7 @@ async function start() {
   $('sl-rh').addEventListener('input', (e) => { state.rh = +e.target.value; });
   $('dht-conn').addEventListener('change', (e) => { state.dht = e.target.checked; });
   document.querySelectorAll('[data-hood]').forEach((b) => b.addEventListener('click', () => startHood(b.dataset.hood)));
-  $('reset-air').addEventListener('click', () => { S.phase = 'idle'; S.food = null; op.level = 0; state.module = [...CLEAN_AIR]; SENSORS.forEach((s, k) => { $(`sl-${s}`).value = state.module[k]; }); show(new Array(104).fill(0)); log('clean air'); });
+  $('reset-air').addEventListener('click', () => { S.phase = 'idle'; S.food = null; op.level = 0; state.module = [...CLEAN_AIR]; SENSORS.forEach((s, k) => { $(`sl-${s}`).value = state.module[k]; }); finalRise = null; show(new Array(104).fill(0)); $('verdict').textContent = 'Press a button to start a test.'; log('clean air'); });
   $('pause').addEventListener('click', (e) => { running = !running; e.target.textContent = running ? 'Pause MCU' : 'Resume MCU'; });
 
   mcu = await window.UnoQMcu({
