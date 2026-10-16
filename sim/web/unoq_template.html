@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PGAS UNO Q Simulation</title>
+<meta name="claude:viewport-fit-sides" content="cover">
 <style>
 :root {
   --bg: #f7f8f3; --surface: #ffffff; --ink: #14170f; --muted: #5a5f52; --line: #d9dccf;
@@ -13,24 +14,26 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #12140f; --surface: #1b1e17; --ink: #eef1e6; --muted: #a7ad9b; --line: #33382b;
-    --lime-ink: #c8ef86; --pink-ink: #ff9ab6; --wire: #c9cfbd; --led-off: #0e141c;
+    --lime-ink: #c8ef86; --pink-ink: #ff9ab6; --wire: #c9cfbd; --led-off: #0e141c; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #12140f; --surface: #1b1e17; --ink: #eef1e6; --muted: #a7ad9b; --line: #33382b;
-  --lime-ink: #c8ef86; --pink-ink: #ff9ab6; --wire: #c9cfbd; --led-off: #0e141c;
+  --lime-ink: #c8ef86; --pink-ink: #ff9ab6; --wire: #c9cfbd; --led-off: #0e141c; color-scheme: dark;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
-header { padding: 18px 16px 10px; max-width: 1180px; margin: 0 auto; }
+header { padding-block: 18px 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); max-width: 1212px; margin: 0 auto; }
 h1 { font-size: 20px; margin: 0 0 4px; }
 .sub { color: var(--muted); margin: 0; }
 .badge { display: inline-block; background: var(--pink); color: #3a0a18; font-weight: 600; font-size: 12px; padding: 2px 8px; border-radius: 99px; margin-left: 6px; vertical-align: 2px; }
-main { max-width: 1180px; margin: 0 auto; padding: 0 16px 24px; display: grid; gap: 14px; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); }
+main { max-width: 1212px; margin: 0 auto; padding-block: 0 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 14px; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; }
 .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 10px; }
 .span2 { grid-column: 1 / -1; }
 svg { width: 100%; height: auto; display: block; }
+.scroll-x { overflow-x: auto; }
+.scroll-x svg { min-width: 720px; }
 svg text { fill: var(--ink); font: 12px system-ui, sans-serif; }
 svg .small { font-size: 10.5px; fill: var(--muted); }
 svg .val { font: 600 12px var(--mono); fill: var(--pink-ink); }
@@ -73,11 +76,12 @@ svg .bridge { stroke: #f4a3b4; stroke-width: 2; fill: none; stroke-dasharray: 5 
 <body>
 <header>
   <h1>PGAS on the Arduino UNO Q <span class="badge">SIMULATION · not real measurements</span></h1>
-  <p class="sub">The UNO Q code path of <code>app/sketch/sketch.ino</code> (14-bit ADC, <code>Bridge.notify / Bridge.provide("draw")</code>, <code>Arduino_LED_Matrix</code>) compiled to WebAssembly against an emulated UNO Q MCU API, wired to the PGAS sensors. MCU time <span class="stat"><span id="simtime">0</span> s</span> · samples <span class="stat" id="samples">0</span> · draw calls / matrix.draw() <span class="stat" id="draws">0</span></p>
+  <p class="sub">The UNO Q code path of <code>app/sketch/sketch.ino</code> (14-bit ADC, <code>Bridge.notify / Bridge.provide("draw")</code>, <code>Arduino_LED_Matrix</code>) compiled with emscripten against an emulated UNO Q MCU API, wired to the PGAS sensors. MCU time <span class="stat"><span id="simtime">0</span> s</span> · samples <span class="stat" id="samples">0</span> · draw calls / matrix.draw() <span class="stat" id="draws">0</span></p>
 </header>
 <main>
   <section class="card span2">
     <h2>Wiring and board (live)</h2>
+    <div class="scroll-x">
     <svg viewBox="0 0 900 470" role="img" aria-label="PGAS wiring to the Arduino UNO Q: MQ-135, MQ-3 and MQ-2 through 10k/20k dividers to A0-A2; DHT22 with 10k pull-up to D2; on-board 8x13 LED matrix">
       <text x="40" y="22" class="small">MQ heaters on 5 V · common ground · each AO through 10 kΩ (top) / 20 kΩ (bottom) · DHT22 on 3.3 V</text>
       <rect x="560" y="40" width="320" height="410" rx="14" class="unoq"/>
@@ -110,6 +114,7 @@ svg .bridge { stroke: #f4a3b4; stroke-width: 2; fill: none; stroke-dasharray: 5 
       <text x="566" y="399" class="pcb-t">D2</text>
       <text x="200" y="388" class="small">one-wire data (flashes on each read)</text>
     </svg>
+    </div>
   </section>
 
   <section class="card">
