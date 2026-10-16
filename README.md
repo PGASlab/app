@@ -4,6 +4,10 @@
 
 <h1 align="center">PGAS</h1>
 <p align="center"><b>AI Nose — The Modern Silver Spoon</b></p>
+<p align="center">
+  <b>PGAS (Patrick Get A Nose)</b> — 派大星有鼻子了<br>
+  <b>Portable Gas Analysis System</b>（可攜式氣體分析系統）
+</p>
 
 People used to test food with a silver spoon, because silver turns black when it
 meets sulfides. Spoiling food gives off ammonia, sulfides and ethanol. PGAS
@@ -153,6 +157,11 @@ A street vendor can't depend on a subscription, a cloud API or a phone signal.
 Each part PGAS uses is open: the Arduino App Lab bricks, llama.cpp, Gemma, ONNX
 Runtime, scikit-learn, and this code (MIT). That means anyone can rebuild it,
 retrain it on their own food, or swap the model for a better one.
+
+## Contributors
+
+- [@k66inthesky](https://github.com/k66inthesky)
+- [Claude](https://claude.ai/code), AI pair programmer
 
 ## License
 
