@@ -27,6 +27,8 @@ inference, no account, and no running cost.
 
 ## How it works
 
+> **Try it without hardware:** [live UNO Q simulation](https://claude.ai/artifact/BoE3spE76moKDwF9TGCZLH). Press "Hood over swill" and watch the board's LED matrix count down.
+
 ```mermaid
 flowchart LR
   subgraph Sensors["Sensors inside the K-812 box"]
@@ -55,7 +57,7 @@ flowchart LR
 * **MCU sketch** ([`app/sketch/sketch.ino`](app/sketch/sketch.ino)): reads A0–A2 and the DHT22 once a second, sends the readings to Linux over the Arduino Bridge, and draws the frames Linux sends back on the LED matrix.
 * **Linux app** ([`app/python/main.py`](app/python/main.py) + [`pgas/`](pgas)): runs the capture sessions, extracts features, classifies, writes advice, and stores every raw reading as CSV.
 * **CLI** ([`pgas/capture.py`](pgas/capture.py)): starts a capture from the board shell or from the Mac (`--host` / `--adb`). It needs only the standard library.
-* **Simulation**: [`sim/`](sim). Open `sim/web/pgas-unoq-sim.html` in a browser to watch the sketch's UNO Q code path drive the board's LED matrix, read the sensors through the dividers and talk to Linux over the Bridge. The UNO Q MCU API is emulated, because no UNO Q simulator exists. An AVR/Wokwi variant and the CI end-to-end runs are also in `sim/`.
+* **Simulation**: [▶ open the live UNO Q simulation in your browser](https://claude.ai/artifact/BoE3spE76moKDwF9TGCZLH). The sketch's UNO Q code path drives the board's LED matrix, reads the sensors through the dividers and talks to Linux over the Bridge. The UNO Q MCU API is emulated because no UNO Q simulator exists. The same page is in the repo as `sim/web/pgas-unoq-sim.html` and works offline; an AVR/Wokwi variant and the CI end-to-end runs are also in [`sim/`](sim).
 * **Mac**: trains the classifier ([`pgas/train.py`](pgas/train.py)) and makes the plots ([`pgas/plot.py`](pgas/plot.py)).
 
 The classifier decides the grade. The LLM only turns grade + deadline into a
