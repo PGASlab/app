@@ -16,9 +16,10 @@ else
   case "$HOST" in *@*) ;; *) HOST="arduino@$HOST" ;; esac
 fi
 
-# Run a shell command on the board.
+# Run a shell command on the board. adb shell sets TMPDIR=/data/local/tmp (an
+# Android path that does not exist on the UNO Q), which breaks arduino-app-cli.
 board() {
-  if [ "$MODE" = adb ]; then adb shell "$1"; else ssh "$HOST" "$1"; fi
+  if [ "$MODE" = adb ]; then adb shell "export TMPDIR=/tmp; $1"; else ssh "$HOST" "$1"; fi
 }
 
 # Stream a tar archive from stdin into a directory on the board.
