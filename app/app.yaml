@@ -1,9 +1,7 @@
 name: PGAS
 icon: 👃
 description: "AI Nose - the modern silver spoon. Smells food spoilage with MQ-135, MQ-3 and MQ-2, grades it FRESH / SPOILING / DO-NOT-SELL on-device and gives the vendor one line of advice from a local Gemma 3 model."
+# The arduino:llm brick is not in the App Lab release on the board yet
+# (arduino-app-cli brick list); pgas.agent falls back to rule-based advice.
 bricks:
-  - arduino:llm:
-      model: llamacpp:gemma-3-1b-it-Q4_0
-      variables:
-        LLAMA_ARG_CTX_SIZE: "2048"
   - arduino:web_ui
