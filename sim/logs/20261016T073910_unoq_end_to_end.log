@@ -1,0 +1,327 @@
+07:39:10 === PGAS SIMULATION RUN - synthetic signals, NOT real measurements ===
+07:39:10 work dir: /tmp/pgas-sim-6kw9tq13
+07:39:13 placeholder classifier trained on SYNTHETIC data: knn_k3 (for plumbing only)
+07:39:13 MCU: UNO Q code path of sketch.ino on the emulated UNO Q MCU API
+07:39:14 MCU Bridge.notify -> pgas_sample,3310,2647,2964,0.0,0.0,0
+07:39:17 $ python -m pgas.capture --selftest
+07:39:17 UNO Q LED matrix (drawn by the sketch) -> T
+###..........
+.#...........
+.#...........
+.#...........
+.#...........
+.............
+.............
+.............
+07:39:17   | 07:39:17 collecting 20 s of readings...
+07:39:24 MCU Bridge.notify -> pgas_sample,3319,2646,2982,26.5,65.0,1
+07:39:34 MCU Bridge.notify -> pgas_sample,3314,2658,2970,26.5,65.0,1
+07:39:38 UNO Q LED matrix (drawn by the sketch) -> FRESH
+.............
+...........##
+..........##.
+.........##..
+.##.....##...
+..##...##....
+...##.##.....
+....###......
+07:39:38   | 07:39:38 [PASS] Bridge (MCU -> Linux): 21 readings in 21 s (1.01 Hz)
+07:39:38   | 07:39:38 [PASS] MQ135 on A0 range: pin 0.663-0.670 V (sensor 0.995-1.006 V)
+07:39:38   | 07:39:38 [PASS] MQ135 stable: spread 0.011 V (limit 0.1 V)
+07:39:38   | 07:39:38 [PASS] MQ3 on A1 range: pin 0.532-0.537 V (sensor 0.798-0.806 V)
+07:39:38   | 07:39:38 [PASS] MQ3 stable: spread 0.008 V (limit 0.1 V)
+07:39:38   | 07:39:38 [PASS] MQ2 on A2 range: pin 0.596-0.603 V (sensor 0.895-0.904 V)
+07:39:38   | 07:39:38 [PASS] MQ2 stable: spread 0.009 V (limit 0.1 V)
+07:39:38   | 07:39:38 [PASS] DHT22 on D2: 21/21 valid, 26.5 C, 65.0 %RH
+07:39:38   | 07:39:38 OVERALL: PASS
+07:39:38 $ python -m pgas.capture --mode hood --label fresh_sim_chicken
+07:39:38 UNO Q LED matrix (drawn by the sketch) -> A
+.#...###.###.
+#.#....#.#.#.
+###..###.#.#.
+#.#....#.#.#.
+#.#..###.###.
+.............
+.............
+.............
+07:39:38   | 07:39:38 recording to 20261016T073938_hood_fresh_sim_chicken.csv
+07:39:38   | 07:39:38 STEP 1/3: hold the box in open air, away from food (30 s)
+07:39:44 MCU Bridge.notify -> pgas_sample,3301,2640,2984,26.5,65.0,1
+07:39:54 MCU Bridge.notify -> pgas_sample,3321,2660,2990,26.5,65.0,1
+07:40:04 MCU Bridge.notify -> pgas_sample,3303,2643,2974,26.5,65.0,1
+07:40:08 UNO Q LED matrix (drawn by the sketch) -> M
+#.#..###.###.
+###..#.#.#...
+###..#.#.###.
+#.#..#.#...#.
+#.#..###.###.
+.............
+.............
+.............
+07:40:08   | 07:40:08 MOVE NOW: put the box over the food, opening down, 3-5 cm above it (5 s)
+07:40:10 OPERATOR: box lowered over the food
+07:40:13 UNO Q LED matrix (drawn by the sketch) -> H
+#.#..###.###.
+#.#..#...#.#.
+###..###.#.#.
+#.#..#.#.#.#.
+#.#..###.###.
+.............
+.............
+.............
+07:40:13   | 07:40:13 STEP 2/3: hold the box still over the food (60 s)
+07:40:14 MCU Bridge.notify -> pgas_sample,3473,2707,3076,26.5,65.0,1
+07:40:24 MCU Bridge.notify -> pgas_sample,3647,2760,3190,26.5,65.0,1
+07:40:34 MCU Bridge.notify -> pgas_sample,3738,2794,3262,26.5,65.0,1
+07:40:44 MCU Bridge.notify -> pgas_sample,3776,2794,3289,26.5,65.0,1
+07:40:54 MCU Bridge.notify -> pgas_sample,3783,2798,3304,26.5,65.0,1
+07:41:04 MCU Bridge.notify -> pgas_sample,3807,2815,3300,26.5,65.0,1
+07:41:13 UNO Q LED matrix (drawn by the sketch) -> V
+#.#..###.###.
+#.#..#.#.#.#.
+#.#..###.###.
+#.#....#...#.
+.#...###.###.
+.............
+.............
+.............
+07:41:13 OPERATOR: box lifted away from the food
+07:41:13   | 07:41:13 STEP 3/3: lift the box away and let it air out (up to 180 s)
+07:41:14 MCU Bridge.notify -> pgas_sample,3713,2811,3272,26.5,65.0,1
+07:41:24 MCU Bridge.notify -> pgas_sample,3430,2680,3069,26.5,65.0,1
+07:41:29 UNO Q LED matrix (drawn by the sketch) -> FRESH
+.............
+...........##
+..........##.
+.........##..
+.##.....##...
+..##...##....
+...##.##.....
+....###......
+07:41:29   | 07:41:29 readings back to baseline
+07:41:29   | 07:41:29 analysing...
+07:41:29   | 07:41:29 GRADE: FRESH
+07:41:29   | 07:41:29 ADVICE: The sim chicken smells fresh: sell as normal, keep it cold and check it again before 11:45.
+07:41:29   | {
+07:41:29   |   "file": "20261016T073938_hood_fresh_sim_chicken.csv",
+07:41:29   |   "label": "fresh_sim_chicken",
+07:41:29   |   "features": {
+07:41:29   |     "mq135_d_median": 0.1411,
+07:41:29   |     "mq135_d_peak": 0.1556,
+07:41:29   |     "mq135_d_mean": 0.1291,
+07:41:29   |     "mq135_slope20": 0.0041,
+07:41:29   |     "mq3_d_median": 0.0461,
+07:41:29   |     "mq3_d_peak": 0.0548,
+07:41:29   |     "mq3_d_mean": 0.0426,
+07:41:29   |     "mq3_slope20": 0.0013,
+07:41:29   |     "mq2_d_median": 0.0932,
+07:41:29   |     "mq2_d_peak": 0.1054,
+07:41:29   |     "mq2_d_mean": 0.085,
+07:41:29   |     "mq2_slope20": 0.0027,
+07:41:29   |     "temp_c": 26.5,
+07:41:29   |     "rh_pct": 65.0
+07:41:29   |   },
+07:41:29   |   "grade": "FRESH",
+07:41:29   |   "probabilities": {
+07:41:29   |     "FRESH": 1.0,
+07:41:29   |     "SPOILING": 0.0,
+07:41:29   |     "DO-NOT-SELL": 0.0
+07:41:29   |   },
+07:41:29   |   "advice": "The sim chicken smells fresh: sell as normal, keep it cold and check it again before 11:45.",
+07:41:29   |   "advice_source": "rules",
+07:41:29   |   "imputed_features": [],
+07:41:29   |   "fallback_reason": "LLM unavailable: FileNotFoundError: llama.cpp binary not found",
+07:41:29   |   "timing_s": {
+07:41:29   |     "features": 0.002,
+07:41:29   |     "model_load": 0.05,
+07:41:29   |     "inference": 0.0008,
+07:41:29   |     "advice": 0.0,
+07:41:29   |     "total_after_capture": 0.05
+07:41:29   |   },
+07:41:29   |   "advice_detail": {
+07:41:29   |     "text": "The sim chicken smells fresh: sell as normal, keep it cold and check it again before 11:45.",
+07:41:29   |     "source": "rules",
+07:41:29   |     "grade": "FRESH",
+07:41:29   |     "food": "sim chicken",
+07:41:29   |     "deadline": "11:45",
+07:41:29   |     "latency_s": 0.0008591079999860085,
+07:41:29   |     "fallback_reason": "LLM unavailable: FileNotFoundError: llama.cpp binary not found"
+07:41:29   |   },
+07:41:29   |   "capture_s": 110.7,
+07:41:29   |   "recovered": true,
+07:41:29   |   "notify": {
+07:41:29   |     "time": "2026-10-16T07:41:29",
+07:41:29   |     "text": "PGAS FRESH - The sim chicken smells fresh: sell as normal, keep it cold and check it again before 11:45.",
+07:41:29   |     "sent": false,
+07:41:29   |     "reason": "telegram not configured (stub)"
+07:41:29   |   }
+07:41:29   | }
+07:41:29 $ python -m pgas.capture --mode hood --label swill_sim_mixed
+07:41:29 UNO Q LED matrix (drawn by the sketch) -> A
+.#...###.###.
+#.#....#.#.#.
+###..###.#.#.
+#.#....#.#.#.
+#.#..###.###.
+.............
+.............
+.............
+07:41:29   | 07:41:29 recording to 20261016T074129_hood_swill_sim_mixed.csv
+07:41:29   | 07:41:29 STEP 1/3: hold the box in open air, away from food (30 s)
+07:41:34 MCU Bridge.notify -> pgas_sample,3828,2974,3393,26.5,65.0,1
+07:41:44 MCU Bridge.notify -> pgas_sample,3469,2754,3102,26.5,65.0,1
+07:41:54 MCU Bridge.notify -> pgas_sample,3362,2674,2996,26.5,65.0,1
+07:41:59 UNO Q LED matrix (drawn by the sketch) -> M
+#.#..###.###.
+###..#.#.#...
+###..#.#.###.
+#.#..#.#...#.
+#.#..###.###.
+.............
+.............
+.............
+07:41:59   | 07:41:59 MOVE NOW: put the box over the food, opening down, 3-5 cm above it (5 s)
+07:42:01 OPERATOR: box lowered over the food
+07:42:04 MCU Bridge.notify -> pgas_sample,4947,3682,4312,26.5,65.0,1
+07:42:04 UNO Q LED matrix (drawn by the sketch) -> H
+#.#..###.###.
+#.#..#...#.#.
+###..###.#.#.
+#.#..#.#.#.#.
+#.#..###.###.
+.............
+.............
+.............
+07:42:04   | 07:42:04 STEP 2/3: hold the box still over the food (60 s)
+07:42:14 MCU Bridge.notify -> pgas_sample,8154,5703,6933,26.5,65.0,1
+07:42:24 MCU Bridge.notify -> pgas_sample,9536,6613,8106,26.5,65.0,1
+07:42:34 MCU Bridge.notify -> pgas_sample,10143,6998,8564,26.5,65.0,1
+07:42:44 MCU Bridge.notify -> pgas_sample,10398,7153,8781,26.5,65.0,1
+07:42:54 MCU Bridge.notify -> pgas_sample,10501,7234,8879,26.5,65.0,1
+07:43:04 MCU Bridge.notify -> pgas_sample,10563,7249,8909,26.5,65.0,1
+07:43:04 UNO Q LED matrix (drawn by the sketch) -> V
+#.#..###.###.
+#.#..#.#.#.#.
+#.#..###.###.
+#.#....#...#.
+.#...###.###.
+.............
+.............
+.............
+07:43:04 OPERATOR: box lifted away from the food
+07:43:04   | 07:43:04 STEP 3/3: lift the box away and let it air out (up to 180 s)
+07:43:14 MCU Bridge.notify -> pgas_sample,5353,3964,4642,26.5,65.0,1
+07:43:24 MCU Bridge.notify -> pgas_sample,3866,3015,3453,26.5,65.0,1
+07:43:25 UNO Q LED matrix (drawn by the sketch) -> DO-NOT-SELL
+..##.....##..
+...##...##...
+....##.##....
+.....###.....
+.....###.....
+....##.##....
+...##...##...
+..##.....##..
+07:43:25   | 07:43:25 readings back to baseline
+07:43:25   | 07:43:25 analysing...
+07:43:25   | 07:43:25 GRADE: DO-NOT-SELL
+07:43:25   | 07:43:25 ADVICE: Do not sell this sim mixed: throw it away now and wash the container before reusing it.
+07:43:25   | {
+07:43:25   |   "file": "20261016T074129_hood_swill_sim_mixed.csv",
+07:43:25   |   "label": "swill_sim_mixed",
+07:43:25   |   "features": {
+07:43:25   |     "mq135_d_median": 2.0247,
+07:43:25   |     "mq135_d_peak": 2.1452,
+07:43:25   |     "mq135_d_mean": 1.8321,
+07:43:25   |     "mq135_slope20": 0.0612,
+07:43:25   |     "mq3_d_median": 1.2909,
+07:43:25   |     "mq3_d_peak": 1.3672,
+07:43:25   |     "mq3_d_mean": 1.1671,
+07:43:25   |     "mq3_slope20": 0.0392,
+07:43:25   |     "mq2_d_median": 1.6594,
+07:43:25   |     "mq2_d_peak": 1.7579,
+07:43:25   |     "mq2_d_mean": 1.5033,
+07:43:25   |     "mq2_slope20": 0.0504,
+07:43:25   |     "temp_c": 26.5,
+07:43:25   |     "rh_pct": 65.0
+07:43:25   |   },
+07:43:25   |   "grade": "DO-NOT-SELL",
+07:43:25   |   "probabilities": {
+07:43:25   |     "FRESH": 0.0,
+07:43:25   |     "SPOILING": 0.0,
+07:43:25   |     "DO-NOT-SELL": 1.0
+07:43:25   |   },
+07:43:25   |   "advice": "Do not sell this sim mixed: throw it away now and wash the container before reusing it.",
+07:43:25   |   "advice_source": "rules",
+07:43:25   |   "imputed_features": [],
+07:43:25   |   "fallback_reason": "LLM unavailable: FileNotFoundError: llama.cpp binary not found",
+07:43:25   |   "timing_s": {
+07:43:25   |     "features": 0.002,
+07:43:25   |     "model_load": 0.0,
+07:43:25   |     "inference": 0.0023,
+07:43:25   |     "advice": 0.0,
+07:43:25   |     "total_after_capture": 0.01
+07:43:25   |   },
+07:43:25   |   "advice_detail": {
+07:43:25   |     "text": "Do not sell this sim mixed: throw it away now and wash the container before reusing it.",
+07:43:25   |     "source": "rules",
+07:43:25   |     "grade": "DO-NOT-SELL",
+07:43:25   |     "food": "sim mixed",
+07:43:25   |     "deadline": null,
+07:43:25   |     "latency_s": 0.0007216569999854983,
+07:43:25   |     "fallback_reason": "LLM unavailable: FileNotFoundError: llama.cpp binary not found"
+07:43:25   |   },
+07:43:25   |   "capture_s": 115.5,
+07:43:25   |   "recovered": true,
+07:43:25   |   "notify": {
+07:43:25   |     "time": "2026-10-16T07:43:25",
+07:43:25   |     "text": "PGAS DO-NOT-SELL - Do not sell this sim mixed: throw it away now and wash the container before reusing it.",
+07:43:25   |     "sent": false,
+07:43:25   |     "reason": "telegram not configured (stub)"
+07:43:25   |   }
+07:43:25   | }
+07:43:25 MCU samples received: 252, Bridge draw calls: 198, matrix.draw() on the MCU: 199
+07:43:25 SUMMARY (simulation, not results):
+{
+  "selftest_exit": 0,
+  "fresh_sim_chicken": {
+    "exit": 0,
+    "state": "done",
+    "result": {
+      "file": "20261016T073938_hood_fresh_sim_chicken.csv",
+      "grade": "FRESH",
+      "advice": "The sim chicken smells fresh: sell as normal, keep it cold and check it again before 11:45.",
+      "advice_source": "rules",
+      "fallback_reason": "LLM unavailable: FileNotFoundError: llama.cpp binary not found",
+      "timing_s": {
+        "features": 0.002,
+        "model_load": 0.05,
+        "inference": 0.0008,
+        "advice": 0.0,
+        "total_after_capture": 0.05
+      },
+      "capture_s": 110.7,
+      "recovered": true
+    }
+  },
+  "swill_sim_mixed": {
+    "exit": 0,
+    "state": "done",
+    "result": {
+      "file": "20261016T074129_hood_swill_sim_mixed.csv",
+      "grade": "DO-NOT-SELL",
+      "advice": "Do not sell this sim mixed: throw it away now and wash the container before reusing it.",
+      "advice_source": "rules",
+      "fallback_reason": "LLM unavailable: FileNotFoundError: llama.cpp binary not found",
+      "timing_s": {
+        "features": 0.002,
+        "model_load": 0.0,
+        "inference": 0.0023,
+        "advice": 0.0,
+        "total_after_capture": 0.01
+      },
+      "capture_s": 115.5,
+      "recovered": true
+    }
+  }
+}
+07:43:25 END-TO-END SIMULATION: PASS

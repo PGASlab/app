@@ -225,6 +225,8 @@ def run(data_dir: Path, out_dir: Path, fig_dir: Path, window_rows: int = 30) -> 
             "min_rise_v": labeling.MIN_RISE_V,
         },
         "loso_accuracy": best["loso_accuracy"],
+        # Used on the board when the DHT22 gave no valid reading during a capture.
+        "feature_medians": {f: float(np.nanmedian(ds.X[best["feature_set"]][:, i])) for i, f in enumerate(fs)},
         "confusion_matrix": cm.tolist(),
         "all_candidates": [{k: v for k, v in r.items() if k != "pred"} for r in results],
         "sources": ds.sources,

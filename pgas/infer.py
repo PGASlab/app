@@ -13,11 +13,16 @@ from . import config
 from .features import vector
 
 
+# Only environment features may be filled in; a missing gas feature is an error.
+IMPUTABLE = ("temp_c", "rh_pct")
+
+
 @dataclass
 class Prediction:
     grade: str
     probabilities: dict[str, float]
     latency_ms: float
+    imputed: tuple[str, ...] = ()
 
 
 class Classifier:
@@ -35,6 +40,12 @@ class Classifier:
 
     def predict(self, features: dict[str, float]) -> Prediction:
         x = vector(features, self.features).reshape(1, -1)
+        imputed = []
+        medians = self.card.get("feature_medians", {})
+        for i, n in enumerate(self.features):
+            if np.isnan(x[0, i]) and n in IMPUTABLE and n in medians:
+                x[0, i] = medians[n]  # DHT22 gave no valid reading during this capture
+                imputed.append(n)
         if np.isnan(x).any():
             missing = [n for n, v in zip(self.features, x[0]) if np.isnan(v)]
             raise ValueError(f"missing features: {missing}")
@@ -46,4 +57,5 @@ class Classifier:
             grade=self.classes[int(np.asarray(label)[0])],
             probabilities={c: float(p[i]) for i, c in enumerate(self.classes)},
             latency_ms=dt,
+            imputed=tuple(imputed),
         )

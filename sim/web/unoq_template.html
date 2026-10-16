@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PGAS UNO Q Simulation</title>
+<style>
+:root {
+  --bg: #f7f8f3; --surface: #ffffff; --ink: #14170f; --muted: #5a5f52; --line: #d9dccf;
+  --lime: #b5e06c; --lime-ink: #3d5a10; --pink: #f4a3b4; --pink-ink: #b8325a; --purple: #5b3b8c;
+  --wire: #3a3f33; --led-off: #1c2430; --led-on: #8fd3ff; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12140f; --surface: #1b1e17; --ink: #eef1e6; --muted: #a7ad9b; --line: #33382b;
+    --lime-ink: #c8ef86; --pink-ink: #ff9ab6; --wire: #c9cfbd; --led-off: #0e141c;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12140f; --surface: #1b1e17; --ink: #eef1e6; --muted: #a7ad9b; --line: #33382b;
+  --lime-ink: #c8ef86; --pink-ink: #ff9ab6; --wire: #c9cfbd; --led-off: #0e141c;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { padding: 18px 16px 10px; max-width: 1180px; margin: 0 auto; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+.sub { color: var(--muted); margin: 0; }
+.badge { display: inline-block; background: var(--pink); color: #3a0a18; font-weight: 600; font-size: 12px; padding: 2px 8px; border-radius: 99px; margin-left: 6px; vertical-align: 2px; }
+main { max-width: 1180px; margin: 0 auto; padding: 0 16px 24px; display: grid; gap: 14px; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; }
+.card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 10px; }
+.span2 { grid-column: 1 / -1; }
+svg { width: 100%; height: auto; display: block; }
+svg text { fill: var(--ink); font: 12px system-ui, sans-serif; }
+svg .small { font-size: 10.5px; fill: var(--muted); }
+svg .val { font: 600 12px var(--mono); fill: var(--pink-ink); }
+svg .wire { stroke: var(--wire); stroke-width: 2; fill: none; }
+svg .sig { stroke: var(--lime-ink); fill: none; transition: stroke-width .3s; }
+svg .box { fill: var(--surface); stroke: var(--wire); stroke-width: 1.5; }
+svg .board { fill: #0f6b74; stroke: #0a4d54; }
+svg .board-t { fill: #e8fbff; }
+svg .res { fill: var(--surface); stroke: var(--wire); stroke-width: 1.5; }
+svg #wire-d2.active { stroke: var(--pink-ink); stroke-width: 4; }
+.row { display: grid; grid-template-columns: 70px 1fr 64px; gap: 8px; align-items: center; margin: 6px 0; }
+.row label { font-weight: 600; }
+.row output { font: 12px var(--mono); text-align: right; }
+input[type=range] { width: 100%; accent-color: #7fae2e; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+button { font: inherit; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 6px 12px; border-radius: 8px; cursor: pointer; }
+button.primary { background: var(--lime); color: #1d2a07; border-color: #94c24c; font-weight: 600; }
+button.danger { background: var(--pink); color: #3a0a18; border-color: #e07d94; font-weight: 600; }
+table { border-collapse: collapse; width: 100%; font: 12px var(--mono); }
+th, td { text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--muted); font-weight: 600; font-family: system-ui, sans-serif; }
+pre { margin: 0; background: #0d110b; color: #cfe8b0; font: 12px/1.4 var(--mono); padding: 10px; border-radius: 8px; height: 220px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
+#matrix-unused { width: 300px; max-width: 100%; display: grid; grid-template-columns: repeat(13, 1fr); gap: 4px; background: #0b1016; padding: 10px; border-radius: 8px; }
+#matrix i { aspect-ratio: 1; border-radius: 50%; background: var(--led-off); }
+#matrix i.on { background: var(--led-on); box-shadow: 0 0 6px var(--led-on); }
+.stat { font: 12px var(--mono); color: var(--muted); }
+.note { color: var(--muted); font-size: 12.5px; margin: 8px 0 0; }
+.flex { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start; }
+@media (max-width: 820px) { main { grid-template-columns: 1fr; } }
+svg .unoq { fill: #0b5f73; stroke: #07485a; stroke-width: 2; }
+svg .chip { fill: #1d2228; stroke: #3c4650; }
+svg .chip-t { fill: #e6edf3; font-size: 11px; }
+svg .pcb-t { fill: #d8f3ff; }
+svg .led { fill: #12303d; }
+svg .led.on { fill: #8fd3ff; filter: drop-shadow(0 0 3px #8fd3ff); }
+svg .bridge { stroke: #f4a3b4; stroke-width: 2; fill: none; stroke-dasharray: 5 4; }
+</style>
+</head>
+<body>
+<header>
+  <h1>PGAS on the Arduino UNO Q <span class="badge">SIMULATION · not real measurements</span></h1>
+  <p class="sub">The UNO Q code path of <code>app/sketch/sketch.ino</code> (14-bit ADC, <code>Bridge.notify / Bridge.provide("draw")</code>, <code>Arduino_LED_Matrix</code>) compiled to WebAssembly against an emulated UNO Q MCU API, wired to the PGAS sensors. MCU time <span class="stat"><span id="simtime">0</span> s</span> · samples <span class="stat" id="samples">0</span> · draw calls / matrix.draw() <span class="stat" id="draws">0</span></p>
+</header>
+<main>
+  <section class="card span2">
+    <h2>Wiring and board (live)</h2>
+    <svg viewBox="0 0 900 470" role="img" aria-label="PGAS wiring to the Arduino UNO Q: MQ-135, MQ-3 and MQ-2 through 10k/20k dividers to A0-A2; DHT22 with 10k pull-up to D2; on-board 8x13 LED matrix">
+      <text x="40" y="22" class="small">MQ heaters on 5 V · common ground · each AO through 10 kΩ (top) / 20 kΩ (bottom) · DHT22 on 3.3 V</text>
+      <rect x="560" y="40" width="320" height="410" rx="14" class="unoq"/>
+      <text x="580" y="438" class="pcb-t" style="font-weight:700">Arduino UNO Q</text>
+      <text x="690" y="438" class="pcb-t" style="font-size:10.5px">(emulated MCU API)</text>
+      <rect x="604" y="62" width="118" height="54" rx="4" class="chip"/>
+      <text x="614" y="84" class="chip-t" style="font-weight:600">STM32U585</text>
+      <text x="614" y="100" class="chip-t">MCU · sketch.ino</text>
+      <rect x="752" y="62" width="112" height="54" rx="4" class="chip"/>
+      <text x="762" y="84" class="chip-t" style="font-weight:600">QRB2210</text>
+      <text x="762" y="100" class="chip-t">Linux · pgas app</text>
+      <path class="bridge" d="M722 89 H752"/>
+      <text x="704" y="134" class="pcb-t" style="font-size:10.5px">Bridge (RPC)</text>
+      <rect x="616" y="160" width="214" height="134" rx="6" fill="#071b22"/>
+      <g id="leds" transform="translate(633,177)"></g>
+      <text x="636" y="312" class="pcb-t" style="font-size:10.5px">8 × 13 LED matrix (drawn by the sketch)</text>
+      <rect x="818" y="402" width="44" height="14" rx="6" fill="#9aa5ad"/>
+      <text x="824" y="396" class="pcb-t" style="font-size:10px">USB-C</text>
+      <g id="rows"></g>
+      <rect x="40" y="370" width="115" height="50" rx="6" class="box"/>
+      <text x="52" y="391" style="font-weight:600">DHT22</text>
+      <text x="52" y="408" class="small">VCC 3.3 V</text>
+      <path id="wire-d2" class="wire" d="M155 395 H560"/>
+      <circle cx="430" cy="395" r="3" fill="var(--wire)"/>
+      <path class="wire" d="M430 395 V372"/>
+      <rect x="422" y="332" width="16" height="40" class="res"/>
+      <text x="444" y="356" class="small">10 kΩ pull-up</text>
+      <path class="wire" d="M430 332 V318 H470"/>
+      <text x="476" y="322" class="small">3.3 V</text>
+      <text x="566" y="399" class="pcb-t">D2</text>
+      <text x="200" y="388" class="small">one-wire data (flashes on each read)</text>
+    </svg>
+  </section>
+
+  <section class="card">
+    <h2>Gas at each MQ module (module output, volts)</h2>
+    <div class="row"><label for="sl-mq135">MQ-135</label><input id="sl-mq135" type="range" min="0" max="5" step="0.01"><output id="out-mq135"></output></div>
+    <div class="row"><label for="sl-mq3">MQ-3</label><input id="sl-mq3" type="range" min="0" max="5" step="0.01"><output id="out-mq3"></output></div>
+    <div class="row"><label for="sl-mq2">MQ-2</label><input id="sl-mq2" type="range" min="0" max="5" step="0.01"><output id="out-mq2"></output></div>
+    <h2 style="margin-top:14px">DHT22</h2>
+    <div class="row"><label for="sl-temp">Temp</label><input id="sl-temp" type="range" min="-10" max="50" step="0.1" value="26.5"><output id="val-temp"></output></div>
+    <div class="row"><label for="sl-rh">RH</label><input id="sl-rh" type="range" min="0" max="100" step="1" value="65"><output id="val-rh"></output></div>
+    <label><input id="dht-conn" type="checkbox" checked> DHT22 connected</label>
+    <h2 style="margin-top:14px">What the sketch reports over the Bridge</h2>
+    <table>
+      <thead><tr><th>Sensor</th><th>pin</th><th>raw (14-bit)</th><th>decoded module V</th></tr></thead>
+      <tbody>
+        <tr><td>MQ-135 · A0</td><td id="vpin-mq135"></td><td id="raw-mq135"></td><td id="dec-mq135"></td></tr>
+        <tr><td>MQ-3 · A1</td><td id="vpin-mq3"></td><td id="raw-mq3"></td><td id="dec-mq3"></td></tr>
+        <tr><td>MQ-2 · A2</td><td id="vpin-mq2"></td><td id="raw-mq2"></td><td id="dec-mq2"></td></tr>
+        <tr><td>DHT22 · D2</td><td colspan="3" id="dec-dht"></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>Hood mode</h2>
+    <div><span class="stat">phase</span> <b id="phase">idle</b></div>
+    <div class="btns">
+      <button class="primary" data-hood="fresh">Hood over fresh chicken</button>
+      <button class="danger" data-hood="swill">Hood over swill</button>
+      <button id="reset-air">Clean air</button>
+      <button id="pause">Pause MCU</button>
+    </div>
+    <label style="display:block;margin-top:8px"><input id="short" type="checkbox" checked> short demo timing (A 10 s · H 20 s instead of 30 s · 60 s)</label>
+    <table style="margin-top:10px">
+      <thead><tr><th>Feature (V)</th><th>d_median</th><th>d_peak</th><th>d_mean</th></tr></thead>
+      <tbody id="result"><tr><td colspan="4" style="text-align:left;color:var(--muted)">run a hood capture</td></tr></tbody>
+    </table>
+    <p class="note">Watch the LED matrix on the board: every frame goes Linux → <code>Bridge.call("draw")</code> → the sketch's <code>draw()</code> → <code>matrix.draw()</code>. Food gas levels and the virtual operator are simulation parameters. The grade comes from the ONNX model trained on real captures, so it is not shown.</p>
+  </section>
+
+  <section class="card"><h2>Bridge traffic (MCU ⇄ Linux)</h2><pre id="bridge"></pre></section>
+  <section class="card"><h2>Linux side · session log</h2><pre id="log"></pre></section>
+</main>
+<script>
+// sensor rows of the wiring diagram
+(function () {
+  const g = document.getElementById('rows');
+  const rows = [['mq135', 'MQ-135', 'ammonia / sulfides', 'A0'], ['mq3', 'MQ-3', 'ethanol', 'A1'], ['mq2', 'MQ-2', 'broad VOCs', 'A2']];
+  rows.forEach(([id, name, gas, pin], k) => {
+    const y = 90 + k * 95;
+    g.insertAdjacentHTML('beforeend', `
+      <rect x="40" y="${y - 28}" width="115" height="56" rx="6" class="box"/>
+      <text x="52" y="${y - 8}" style="font-weight:600">${name}</text>
+      <text x="52" y="${y + 8}" class="small">${gas}</text>
+      <text x="52" y="${y + 21}" class="small">VCC 5 V</text>
+      <path class="wire" d="M155 ${y} H228"/>
+      <text x="160" y="${y - 10}" class="val" id="vm-${id}"></text>
+      <rect x="228" y="${y - 8}" width="44" height="16" class="res"/>
+      <text x="234" y="${y + 24}" class="small">10 kΩ</text>
+      <path class="wire" d="M272 ${y} H320"/>
+      <circle cx="320" cy="${y}" r="3.5" fill="var(--wire)"/>
+      <path class="wire" d="M320 ${y} V${y + 14}"/>
+      <rect x="312" y="${y + 14}" width="16" height="36" class="res"/>
+      <text x="334" y="${y + 36}" class="small">20 kΩ</text>
+      <path class="wire" d="M320 ${y + 50} V${y + 58} M308 ${y + 58} H332 M312 ${y + 62} H328 M316 ${y + 66} H324"/>
+      <path class="sig" id="wire-${id}" d="M320 ${y} H560"/>
+      <text x="330" y="${y - 10}" class="val" id="vp-${id}"></text>
+      <text x="566" y="${y + 4}" class="pcb-t">${pin}</text>`);
+  });
+})();
+</script>
+<script>/*MCU*/</script>
+<script>/*BUNDLE*/</script>
+</body>
+</html>

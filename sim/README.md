@@ -1,7 +1,31 @@
 # Simulating PGAS
 
-No simulator supports the Arduino UNO Q (STM32U585 + Linux + Bridge). PGAS
-therefore runs the same sketch on an **Arduino Uno R3 stand-in**. When it is
+No simulator supports the Arduino UNO Q (STM32U585 + Linux + Bridge); Wokwi
+doesn't either. PGAS has two ways around that.
+
+## UNO Q: software-in-the-loop (`sim/unoq/`)
+
+`sim/unoq/hal/` emulates the UNO Q MCU API that the sketch uses:
+`analogReadResolution(14)` / `analogRead` on a 3.3 V reference, GPIO with a
+microsecond virtual clock, `Bridge.begin/provide/notify`, and the 8 × 13
+`Arduino_LED_Matrix`. Around it sits the PGAS wiring: the 10k/20k dividers
+and a protocol-timing DHT22. The sketch's **UNO Q code path** (not the AVR
+branch) is compiled against it. The STM32 instruction set and Zephyr are not
+emulated.
+
+- **Browser:** open `sim/web/pgas-unoq-sim.html`. It is offline and
+  self-contained. The MCU runs as WebAssembly and is drawn on a UNO Q board
+  with its LED matrix. Every frame goes Linux → `Bridge.call("draw")` → the
+  sketch's `draw()` → `matrix.draw()`. The Linux side in the page is a browser
+  port of `pgas/session.py` + `pgas/display.py`.
+  Rebuild: `sim/unoq/build.sh wasm build/unoq && sim/web/build_unoq.sh build/unoq/unoq_mcu.js`
+  (needs emscripten).
+- **With the real Python app** (also run in CI):
+  `sim/unoq/build.sh native build/unoq && .venv/bin/python sim/run_sim.py --unoq build/unoq/unoq_native`
+
+## AVR stand-in
+
+The same sketch also runs on an **Arduino Uno R3 stand-in**. When it is
 compiled for AVR, `app/sketch/sketch.ino` swaps the Bridge and LED matrix for
 `Serial` and converts the Uno's 10-bit / 5 V readings to the UNO Q scale
 (14-bit / 3.3 V). The sampling loop, the averaging and the DHT22 driver are the

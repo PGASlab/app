@@ -46,3 +46,23 @@ jobs:
         with:
           name: simulation-log
           path: build/sim/logs/
+
+  unoq-simulation:
+    # UNO Q code path of the sketch on the emulated UNO Q MCU API + the real Linux-side app.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Build sketch (UNO Q path) against the emulated MCU API
+        run: sim/unoq/build.sh native build/unoq
+      - name: Install
+        run: |
+          uv venv --python 3.13 .venv
+          uv pip install -e ".[dev]"
+      - name: End-to-end UNO Q simulation (selftest + 2 hood captures)
+        run: .venv/bin/python sim/run_sim.py --unoq build/unoq/unoq_native --log-dir build/unoq/logs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unoq-simulation-log
+          path: build/unoq/logs/

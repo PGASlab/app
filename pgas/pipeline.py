@@ -47,6 +47,7 @@ def analyze(csv_path: Path | str, use_llm: bool = True, classifier=None, llm=Non
         "probabilities": {k: round(v, 3) for k, v in pred.probabilities.items()},
         "advice": adv.text,
         "advice_source": adv.source,
+        "imputed_features": list(pred.imputed),
         "fallback_reason": adv.fallback_reason,
         "timing_s": {
             "features": round(t_load - t0, 3),

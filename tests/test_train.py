@@ -79,3 +79,19 @@ def test_plot_outputs(dataset_dir, tmp_path):
     outs = plot.run(dataset_dir, tmp_path / "figs")
     names = sorted(p.name for p in outs)
     assert names == ["hood_fresh_vs_spoiled.png", "spoilage_chicken_room_temp.png", "spoilage_tofu_room_temp.png"]
+
+
+def test_missing_dht_is_imputed_not_fatal(dataset_dir, tmp_path):
+    import math
+    from pgas.infer import Classifier
+    from pgas.features import hood_features
+    from pgas.dataio import load_capture, list_captures
+    train.run(dataset_dir, tmp_path / "m", tmp_path / "f")
+    clf = Classifier(tmp_path / "m")
+    feats = hood_features(load_capture(list_captures(dataset_dir, "hood")[0]))
+    feats["temp_c"] = feats["rh_pct"] = math.nan
+    pred = clf.predict(feats)
+    assert pred.grade in config.GRADES and set(pred.imputed) == {"temp_c", "rh_pct"}
+    feats["mq135_d_peak"] = math.nan
+    with pytest.raises(ValueError, match="mq135_d_peak"):
+        clf.predict(feats)

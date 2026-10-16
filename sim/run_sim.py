@@ -1,6 +1,8 @@
 """End-to-end simulation: real sketch on a simulated MCU -> real PGAS app code.
 
-    python sim/run_sim.py --elf <pgas.elf> --board <pgas_board>     (see sim/README.md)
+    python sim/run_sim.py --elf <pgas.elf> --board <pgas_board>     # AVR stand-in on simavr
+    python sim/run_sim.py --unoq <unoq_native>                       # UNO Q code path, emulated MCU API
+    (see sim/README.md)
 
 What is real here: the sketch (compiled for ATmega328P with the official
 Arduino AVR core), the whole Linux-side app (pgas.board.Runtime, sessions,
@@ -59,15 +61,32 @@ class Log:
             self.fh.flush()
 
 
+def frame_tag(frame: list[int]) -> str | None:
+    cells = [r * 13 + c for r in range(5) for c in range(3)]
+    letter = next((ch for ch in "AMHVCTE"
+                   if [frame[i] for i in cells] == [display.text3(ch)[i] for i in cells]
+                   and any(frame[i] for i in cells)), None)
+    icon = next((g for g in ("FRESH", "SPOILING", "DO-NOT-SELL") if frame == display.icon(g)), None)
+    return icon or letter
+
+
 class SimBridge:
-    """Stands in for arduino.app_utils.Bridge on the Linux side."""
+    """Stands in for arduino.app_utils.Bridge on the Linux side.
+
+    With the UNO Q board, Bridge.call("draw", frame) is forwarded to the
+    sketch's draw() handler; the frame the LED matrix then shows is logged
+    when the MCU reports matrix.draw().
+    """
 
     def __init__(self, log: Log):
-        self.log, self.frames, self.last_letter = log, 0, None
+        self.log, self.frames, self.last_letter, self.board = log, 0, None, None
 
     def call(self, name, data, timeout=10):
         assert name == "draw" and len(data) == 104
         self.frames += 1
+        if self.board is not None and self.board.kind == "unoq":
+            self.board.send("F " + bytes(data).hex())
+            return
         frame = list(data)
         cells = [r * 13 + c for r in range(5) for c in range(3)]
         letter = next((ch for ch in "AMHVCTE"
@@ -81,18 +100,32 @@ class SimBridge:
 
 
 class Board:
-    """The simavr process: sketch + simulated sensors."""
+    """The MCU process: sketch + simulated sensors (simavr AVR, or emulated UNO Q)."""
 
-    def __init__(self, board_bin: str, elf: str, runtime: Runtime, log: Log):
-        self.p = subprocess.Popen([board_bin, elf], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+    def __init__(self, cmd: list[str], kind: str, runtime: Runtime, log: Log):
+        self.p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                   stderr=subprocess.STDOUT, text=True, bufsize=1)
-        self.runtime, self.log, self.samples = runtime, log, 0
+        self.kind, self.runtime, self.log, self.samples = kind, runtime, log, 0
+        self.matrix_frames, self.last_tag = 0, None
         threading.Thread(target=self._read, daemon=True).start()
 
     def _read(self):
         for line in self.p.stdout:
             line = line.strip()
-            if line.startswith("S,"):
+            if line.startswith("N,pgas_sample,"):
+                a0, a1, a2, t, h, ok = line[len("N,pgas_sample,"):].split(",")
+                self.runtime.on_sample(int(a0), int(a1), int(a2), float(t), float(h), int(ok))
+                self.samples += 1
+                if self.samples % 10 == 1:
+                    self.log(f"MCU Bridge.notify -> {line[2:]}")
+            elif line.startswith("M,"):
+                frame = [int(c) for c in line[2:]]
+                self.matrix_frames += 1
+                tag = frame_tag(frame)
+                if tag and tag != self.last_tag:
+                    self.last_tag = tag
+                    self.log(f"UNO Q LED matrix (drawn by the sketch) -> {tag}\n" + display.ascii_art(frame))
+            elif line.startswith("S,"):
                 a0, a1, a2, t, h, ok = line[2:].split(",")
                 self.runtime.on_sample(int(a0), int(a1), int(a2), float(t), float(h), int(ok))
                 self.samples += 1
@@ -169,12 +202,16 @@ def newest_job(jobs_dir: Path, after: set[str]) -> str | None:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--elf", required=True)
-    ap.add_argument("--board", required=True)
+    ap.add_argument("--elf")
+    ap.add_argument("--board")
+    ap.add_argument("--unoq", help="sim/unoq/build.sh native output (UNO Q code path)")
     ap.add_argument("--log-dir", type=Path, default=ROOT / "sim" / "logs")
     a = ap.parse_args()
     a.log_dir.mkdir(parents=True, exist_ok=True)
-    log = Log(a.log_dir / f"{datetime.now():%Y%m%dT%H%M%S}_simavr_end_to_end.log")
+    kind = "unoq" if a.unoq else "avr"
+    if kind == "avr" and not (a.elf and a.board):
+        ap.error("give --unoq, or --elf and --board")
+    log = Log(a.log_dir / f"{datetime.now():%Y%m%dT%H%M%S}_{'unoq' if kind == 'unoq' else 'simavr'}_end_to_end.log")
     log("=== PGAS SIMULATION RUN - synthetic signals, NOT real measurements ===")
     log(f"work dir: {WORK}")
 
@@ -187,7 +224,10 @@ def main() -> int:
 
     bridge = SimBridge(log)
     runtime = Runtime(bridge=bridge, data_dir=WORK / "data")
-    board = Board(a.board, a.elf, runtime, log)
+    cmd = [a.unoq] if kind == "unoq" else [a.board, a.elf]
+    board = Board(cmd, kind, runtime, log)
+    bridge.board = board
+    log(f"MCU: {'UNO Q code path of sketch.ino on the emulated UNO Q MCU API' if kind == 'unoq' else 'AVR stand-in on simavr'}")
     board.send("E 26.5 65.0")
     op = Operator(board, runtime.jobs_dir, log)
     op.start()
@@ -223,7 +263,8 @@ def main() -> int:
 
     stop.set()
     board.close()
-    log(f"MCU samples received: {board.samples}, LED frames drawn: {bridge.frames}")
+    log(f"MCU samples received: {board.samples}, Bridge draw calls: {bridge.frames}, "
+        f"matrix.draw() on the MCU: {board.matrix_frames}")
     log("SUMMARY (simulation, not results):\n" + json.dumps(results, indent=2))
     ok = results["selftest_exit"] == 0 and all(results[f]["state"] == "done" for f in FOODS)
     log("END-TO-END SIMULATION: " + ("PASS" if ok else "FAIL"))
