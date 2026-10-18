@@ -1,0 +1,53 @@
+{
+  "model": "logistic regression (scikit-learn) -> ONNX",
+  "inputs": [
+    "mq135_rise_v",
+    "mq3_rise_v",
+    "mq2_rise_v"
+  ],
+  "classes": [
+    "fresh",
+    "spoiled"
+  ],
+  "grade_cutoffs": {
+    "SPOILING": 0.5,
+    "DO-NOT-SELL": 0.8
+  },
+  "training_samples": [
+    {
+      "rises_v": [
+        0.03,
+        0.02,
+        0.0
+      ],
+      "label": "fresh",
+      "source": "clean-air control, docs/images/02-clean-air-fresh.jpg"
+    },
+    {
+      "rises_v": [
+        0.02,
+        0.21,
+        0.05
+      ],
+      "label": "spoiled",
+      "source": "spoiled milk, guided test, docs/images/09-result-do-not-sell.jpg"
+    },
+    {
+      "rises_v": [
+        0.38,
+        0.41,
+        0.29
+      ],
+      "label": "spoiled",
+      "source": "spoiled milk, first dashboard test (read from the chart)"
+    }
+  ],
+  "augmentation": "200 copies per sample, Gaussian noise sigma 0.01 V",
+  "note": "3 real samples; no held-out accuracy can be measured yet",
+  "coef": [
+    -1.592,
+    25.763,
+    6.698
+  ],
+  "intercept": -3.09
+}

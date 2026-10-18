@@ -19,7 +19,7 @@ import time
 import traceback
 from pathlib import Path
 
-from . import agent, config, display, jobs, notify, rules, selftest
+from . import agent, bag_model, config, display, jobs, notify, rules, selftest
 from .dataio import CaptureWriter
 from .session import (BAG_WAIT_MAX_S, ContinuousState, Reading, RetestError, run_bag, run_continuous,
                       run_hood)
@@ -190,11 +190,21 @@ class Runtime:
         # Agent loop: SENSE (the three gas rises) -> DECIDE (on-device) -> ACT (physical + message).
         t0 = time.perf_counter()
         feats = {f"{s}_d_peak": v for s, v in res.rises.items()}
-        grade, rises = rules.quick_grade(feats)
+        rule_grade, rises = rules.quick_grade(feats)
+        grade, extra = rule_grade, {"method": "rule"}
+        model = bag_model.load()
+        if model is not None:
+            # The on-board ONNX model decides; the rule stays as a safety net, so the
+            # verdict is the more severe of the two while the model has so little data.
+            p_spoiled, infer_ms = model.p_spoiled(res.rises)
+            model_grade = bag_model.grade_from_p(p_spoiled)
+            grade = max(model_grade, rule_grade, key=config.GRADES.index)
+            extra = {"method": "model", "p_spoiled": round(p_spoiled, 3), "model_grade": model_grade,
+                     "rule_grade": rule_grade, "infer_ms": round(infer_ms, 3)}
         adv = agent.advise(grade, feats, p.get("label", "check"), use_llm=False)
         decide_ms = round((time.perf_counter() - t0) * 1000, 2)
         actions = self._act(grade, adv.text)
-        out = {"grade": grade, "method": "rule", "rises_v": rises, "advice": adv.text,
+        out = {"grade": grade, **extra, "rises_v": rises, "advice": adv.text,
                "capture_s": round(res.capture_s, 1), "decide_ms": decide_ms, "actions": actions}
         st.log(f"GRADE: {grade}")
         st.log(f"ADVICE: {adv.text}")

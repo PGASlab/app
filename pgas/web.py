@@ -123,12 +123,14 @@ class LiveFeed:
                    "state": str(state)}
             if isinstance(result, dict):
                 # Only small, JSON-safe fields: a result can hold numpy features.
-                for k in ("grade", "advice", "error", "note", "retest", "step", "pass", "method"):
+                for k in ("grade", "advice", "error", "note", "retest", "step", "pass", "method",
+                          "model_grade", "rule_grade"):
                     v = result.get(k)
                     if v is not None:
                         msg[k] = v if isinstance(v, bool) else str(v)
-                if isinstance(result.get("decide_ms"), (int, float)):
-                    msg["decide_ms"] = float(result["decide_ms"])
+                for k in ("decide_ms", "p_spoiled", "infer_ms"):
+                    if isinstance(result.get(k), (int, float)):
+                        msg[k] = float(result[k])
                 if isinstance(result.get("actions"), list):
                     msg["actions"] = [str(a) for a in result["actions"]][:8]
                 rises = result.get("rises_v")

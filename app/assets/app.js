@@ -54,6 +54,7 @@ const I18N = {
     res_spoiling: 'Spoilage gases are rising. It is starting to go off.',
     res_retest: 'Please test again', res_busy: 'Another test is running. Wait for it to finish.',
     res_rule: 'Judged from the three gas sensors (MQ-135, MQ-3, MQ-2) with a provisional rule.',
+    res_model: (p) => `On-board ONNX model: ${Math.round(p * 100)}% likely spoiled (trained on very few samples; a safety rule double-checks it).`,
     ag_sense: 'Sense', ag_decide: 'Decide', ag_act: 'Act',
     ag_sense_t: '3 gas sensors, rise above clean air',
     ag_decide_t: (ms, g) => `${g} on the UNO Q, offline, in ${ms} ms`,
@@ -94,6 +95,7 @@ const I18N = {
     res_spoiling: '腐敗氣體正在上升，食物開始變質。',
     res_retest: '請重新測試', res_busy: '另一個測試正在進行，請等它結束。',
     res_rule: '依三顆氣體感測器（MQ-135、MQ-3、MQ-2）以暫定規則判斷。',
+    res_model: (p) => `板上 ONNX 模型判斷：腐壞機率 ${Math.round(p * 100)}%（訓練資料很少，另有安全規則複核）。`,
     ag_sense: '感知', ag_decide: '判斷', ag_act: '行動',
     ag_sense_t: '3 顆氣體感測器，比乾淨空氣高出多少',
     ag_decide_t: (ms, g) => `在 UNO Q 上離線判斷為 ${g}，耗時 ${ms} ms`,
@@ -168,14 +170,18 @@ function trim(now) {
   }
 }
 
-// Clean-air level: measured during a test, otherwise the 10th percentile of the last minutes.
+// Clean-air level: measured during a running test, otherwise the 10th percentile of the
+// last minutes. A test's level is never reused after the test, and the level is never
+// above the current reading: a sensor that reads lower than "clean air" means the
+// level is stale (it was taken near food), so the current reading is the cleaner air.
 function baseline(key) {
   const s = Object.keys(KEY).find((x) => KEY[x] === key);
-  if (testBase[s] != null) return testBase[s];
+  if (running() && testBase[s] != null) return testBase[s];
   const v = series[key].map((p) => p.v);
   if (v.length < 10) return null;
   v.sort((a, b) => a - b);
-  return v[Math.floor(v.length * 0.1)];
+  const p10 = v[Math.floor(v.length * 0.1)];
+  return typeof current[key] === 'number' ? Math.min(p10, current[key]) : p10;
 }
 
 // ------------------------------------------------------------ gauges
@@ -399,7 +405,8 @@ function showResult(m) {
     const w = Math.max(2, Math.min(100, (v / DIAL_MAX_V) * 100));
     return `<div class="rb"><span>${NAMES[s]}</span><span class="t"><span style="background:${color}" data-w="${w}"></span></span><span class="v">${v >= 0 ? '+' : ''}${v.toFixed(2)} V</span></div>`;
   }).join('');
-  $('result-note').textContent = m.method === 'rule' ? T('res_rule') : '';
+  $('result-note').textContent = m.method === 'rule' ? T('res_rule')
+    : m.method === 'model' && m.p_spoiled != null ? T('res_model')(Number(m.p_spoiled)) : '';
   const ag = $('agent');
   ag.hidden = !(m.state === 'done' && m.grade);
   if (!ag.hidden) {
