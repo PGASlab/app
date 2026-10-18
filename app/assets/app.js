@@ -168,14 +168,18 @@ function trim(now) {
   }
 }
 
-// Clean-air level: measured during a test, otherwise the 10th percentile of the last minutes.
+// Clean-air level: measured during a running test, otherwise the 10th percentile of the
+// last minutes. A test's level is never reused after the test, and the level is never
+// above the current reading: a sensor that reads lower than "clean air" means the
+// level is stale (it was taken near food), so the current reading is the cleaner air.
 function baseline(key) {
   const s = Object.keys(KEY).find((x) => KEY[x] === key);
-  if (testBase[s] != null) return testBase[s];
+  if (running() && testBase[s] != null) return testBase[s];
   const v = series[key].map((p) => p.v);
   if (v.length < 10) return null;
   v.sort((a, b) => a - b);
-  return v[Math.floor(v.length * 0.1)];
+  const p10 = v[Math.floor(v.length * 0.1)];
+  return typeof current[key] === 'number' ? Math.min(p10, current[key]) : p10;
 }
 
 // ------------------------------------------------------------ gauges
