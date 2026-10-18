@@ -61,8 +61,10 @@
           <div class="bar" id="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="phase-text"><span id="bar-fill"></span></div>
         </div>
 
-        <button id="check-btn" class="cta" type="button" disabled data-i18n="check_btn">Start test</button>
-        <button id="cancel-btn" class="link" type="button" hidden data-i18n="cancel">Cancel</button>
+        <div class="cta-bar">
+          <button id="check-btn" class="cta" type="button" disabled data-i18n="check_btn">Start test</button>
+          <button id="cancel-btn" class="link" type="button" hidden data-i18n="cancel">Cancel</button>
+        </div>
         <p id="start-msg" class="start-msg" role="status"></p>
       </section>
 
@@ -115,6 +117,11 @@
         <h2 id="result-title"></h2>
         <p id="result-detail"></p>
         <div class="result-bars" id="result-bars"></div>
+        <ol class="agent" id="agent" hidden>
+          <li><b data-i18n="ag_sense">Sense</b><span id="ag-sense"></span></li>
+          <li><b data-i18n="ag_decide">Decide</b><span id="ag-decide"></span></li>
+          <li><b data-i18n="ag_act">Act</b><span id="ag-act"></span></li>
+        </ol>
         <p class="result-note" id="result-note"></p>
         <button id="result-ok" class="cta" type="button">OK</button>
       </div>

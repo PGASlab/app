@@ -187,16 +187,44 @@ class Runtime:
     def _bag(self, p: dict, st) -> None:
         res = run_bag(self.source, self.disp, self.raw_dir, p.get("label", "check"), self._wait_next,
                       log=st.log, progress=getattr(st, "progress", None), stop=self.stop_event)
+        # Agent loop: SENSE (the three gas rises) -> DECIDE (on-device) -> ACT (physical + message).
+        t0 = time.perf_counter()
         feats = {f"{s}_d_peak": v for s, v in res.rises.items()}
         grade, rises = rules.quick_grade(feats)
         adv = agent.advise(grade, feats, p.get("label", "check"), use_llm=False)
+        decide_ms = round((time.perf_counter() - t0) * 1000, 2)
+        actions = self._act(grade, adv.text)
         out = {"grade": grade, "method": "rule", "rises_v": rises, "advice": adv.text,
-               "capture_s": round(res.capture_s, 1)}
-        self.disp.show(display.icon(grade))
+               "capture_s": round(res.capture_s, 1), "decide_ms": decide_ms, "actions": actions}
         st.log(f"GRADE: {grade}")
         st.log(f"ADVICE: {adv.text}")
+        st.log(f"ACT: {', '.join(actions)}")
         _annotate(Path(res.csv), out)
         st.finish("done", out)
+
+    def _act(self, grade: str, advice: str) -> list[str]:
+        """The agent's physical actions for a verdict (best effort, never raises)."""
+        actions = []
+        try:
+            frame = display.icon(grade)
+            if grade != "FRESH":
+                # Alarm: flash the warning icon on the LED matrix before leaving it on.
+                for _ in range(3):
+                    self.disp.show(display.blank())
+                    time.sleep(0.25)
+                    self.disp.show(frame)
+                    time.sleep(0.25)
+            self.disp.show(frame)
+            actions.append("led_alarm" if grade != "FRESH" else "led_ok")
+        except Exception as e:  # noqa: BLE001
+            print(f"act: LED failed: {e}", flush=True)
+        if grade != "FRESH":
+            try:
+                n = notify.send(f"PGAS alert: {grade} - {advice}")
+                actions.append("alert_sent" if n.get("sent") else "alert_queued")
+            except Exception as e:  # noqa: BLE001
+                print(f"act: alert failed: {e}", flush=True)
+        return actions
 
     def _continuous(self, job: dict, st: jobs.Status, resume: ContinuousState | None) -> None:
         p = job.get("params", {})

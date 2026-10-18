@@ -127,6 +127,10 @@ class LiveFeed:
                     v = result.get(k)
                     if v is not None:
                         msg[k] = v if isinstance(v, bool) else str(v)
+                if isinstance(result.get("decide_ms"), (int, float)):
+                    msg["decide_ms"] = float(result["decide_ms"])
+                if isinstance(result.get("actions"), list):
+                    msg["actions"] = [str(a) for a in result["actions"]][:8]
                 rises = result.get("rises_v")
                 if isinstance(rises, dict):
                     msg["rises_v"] = {str(k): _num(v, 3) for k, v in rises.items()}

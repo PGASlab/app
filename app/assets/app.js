@@ -54,6 +54,10 @@ const I18N = {
     res_spoiling: 'Spoilage gases are rising. It is starting to go off.',
     res_retest: 'Please test again', res_busy: 'Another test is running. Wait for it to finish.',
     res_rule: 'Judged from the three gas sensors (MQ-135, MQ-3, MQ-2) with a provisional rule.',
+    ag_sense: 'Sense', ag_decide: 'Decide', ag_act: 'Act',
+    ag_sense_t: '3 gas sensors, rise above clean air',
+    ag_decide_t: (ms, g) => `${g} on the UNO Q, offline, in ${ms} ms`,
+    act: { led_alarm: 'LED matrix alarm (flashing ✕)', led_ok: 'LED matrix ✓', alert_sent: 'alert sent to phone', alert_queued: 'alert queued (Telegram not set up)' },
     disclaimer: 'Disclaimer: this site is for reference only. If you have any concern, ask a medical professional. Do not eat food based on this result alone.',
     not_connected: 'Not connected to the board yet.',
     cmd_failed: (e) => `The board could not start it: ${e}`,
@@ -90,6 +94,10 @@ const I18N = {
     res_spoiling: '腐敗氣體正在上升，食物開始變質。',
     res_retest: '請重新測試', res_busy: '另一個測試正在進行，請等它結束。',
     res_rule: '依三顆氣體感測器（MQ-135、MQ-3、MQ-2）以暫定規則判斷。',
+    ag_sense: '感知', ag_decide: '判斷', ag_act: '行動',
+    ag_sense_t: '3 顆氣體感測器，比乾淨空氣高出多少',
+    ag_decide_t: (ms, g) => `在 UNO Q 上離線判斷為 ${g}，耗時 ${ms} ms`,
+    act: { led_alarm: 'LED 矩陣閃爍 ✕ 警示', led_ok: 'LED 矩陣顯示 ✓', alert_sent: '已傳送警示到手機', alert_queued: '警示已排入佇列（尚未設定 Telegram）' },
     disclaimer: '免責聲明：本網站僅提供參考，若有問題請洽專業醫師指示，請勿僅依此結果自行食用。',
     not_connected: '還沒連上板子。',
     cmd_failed: (e) => `板子無法開始：${e}`,
@@ -392,6 +400,13 @@ function showResult(m) {
     return `<div class="rb"><span>${NAMES[s]}</span><span class="t"><span style="background:${color}" data-w="${w}"></span></span><span class="v">${v >= 0 ? '+' : ''}${v.toFixed(2)} V</span></div>`;
   }).join('');
   $('result-note').textContent = m.method === 'rule' ? T('res_rule') : '';
+  const ag = $('agent');
+  ag.hidden = !(m.state === 'done' && m.grade);
+  if (!ag.hidden) {
+    $('ag-sense').textContent = T('ag_sense_t');
+    $('ag-decide').textContent = T('ag_decide_t')(m.decide_ms != null ? Number(m.decide_ms).toFixed(1) : '<1', m.grade);
+    $('ag-act').textContent = (m.actions || []).map((a) => T('act')[a] || a).join(' · ') || '—';
+  }
   const box = $('result');
   box.hidden = false;
   requestAnimationFrame(() => {

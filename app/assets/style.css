@@ -83,7 +83,7 @@ main { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
 .steps li.done .n { background: var(--green); color: #fff; }
 
 .stage { display: flex; flex-direction: column; align-items: center; }
-.ring-wrap { position: relative; width: min(260px, 72vw); aspect-ratio: 1; margin: 4px auto 14px; }
+.ring-wrap { position: relative; width: min(190px, 48vw); aspect-ratio: 1; margin: 0 auto 10px; }
 .ring-wrap[hidden] { display: none; }
 .ring { width: 100%; height: 100%; transform: rotate(-90deg); }
 .ring circle { fill: none; stroke-width: 16; }
@@ -98,7 +98,7 @@ main { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
 .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .ring-sensor { font-size: 17px; font-weight: 600; color: var(--muted); }
 .ring-num {
-  font-size: clamp(72px, 22vw, 104px); font-weight: 800; line-height: 1; letter-spacing: -0.04em;
+  font-size: clamp(56px, 15vw, 80px); font-weight: 800; line-height: 1; letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
 }
 .ring-num.bump { animation: bump 0.35s ease; }
@@ -110,7 +110,7 @@ main { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
 .ring-live[hidden] { display: none; }
 .ring-live.warn { color: var(--orange); }
 .ring-live.over { color: #fff; background: var(--red); transform: scale(1.1); animation: blink 0.7s ease-in-out infinite; }
-.instr { margin: 0 0 18px; font-size: clamp(20px, 4.6vw, 26px); font-weight: 700; line-height: 1.25; min-height: 1.3em; max-width: 520px; }
+.instr { margin: 0 0 12px; font-size: clamp(18px, 4.4vw, 24px); font-weight: 700; line-height: 1.25; min-height: 1.3em; max-width: 520px; }
 .instr.move { color: var(--orange); }
 .instr.wait { color: var(--green); }
 
@@ -222,3 +222,18 @@ main { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* Keep the main button on screen during a test (sticky to the bottom of the viewport). */
+.cta-bar {
+  position: sticky; bottom: 0; z-index: 5; margin: 0 -20px -20px; padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--card) 85%, transparent);
+  backdrop-filter: saturate(180%) blur(16px); -webkit-backdrop-filter: saturate(180%) blur(16px);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.cta-bar .link { margin-top: 2px; min-height: 36px; }
+.steps { margin-bottom: 12px; }
+.steps li { padding: 8px 4px 6px; }
+.agent { list-style: none; margin: 16px 0 0; padding: 12px 14px; border-radius: 16px; background: var(--fill); text-align: left; display: grid; gap: 6px; }
+.agent[hidden] { display: none; }
+.agent li { display: grid; grid-template-columns: 64px 1fr; gap: 8px; font-size: 14px; align-items: baseline; }
+.agent b { color: var(--blue); font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; }
