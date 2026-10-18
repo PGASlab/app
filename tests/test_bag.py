@@ -76,3 +76,16 @@ def test_wait_next_times_out_and_stops(tmp_path):
     rt.stop_event.clear()
     threading.Timer(0.1, rt.press_next).start()
     assert rt._wait_next(max_s=5) is True
+
+
+def test_low_but_working_sensor_is_accepted(tmp_path):
+    # Seen on the real board: MQ-3 at 132 counts (0.06 V module output) in clean air.
+    res = run_bag(MockSource(lambda i: (1206.0, 132.0, 2219.0)), NullDisplay(), tmp_path, "check",
+                  wait_next=lambda: True, log=lambda m: None)
+    assert set(res.rises) == {"mq135", "mq3", "mq2"}
+
+
+def test_unplugged_sensor_still_asks_for_retest(tmp_path):
+    with pytest.raises(RetestError, match="MQ3"):
+        run_bag(MockSource(lambda i: (1206.0, 5.0, 2219.0)), NullDisplay(), tmp_path, "check",
+                wait_next=lambda: True, log=lambda m: None)

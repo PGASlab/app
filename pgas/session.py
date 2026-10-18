@@ -63,10 +63,13 @@ class RetestError(SessionError):
         super().__init__(f"{step}: {reason} - please re-test")
 
 
-# A gas channel below 1 % of full scale means the sensor is not connected
-# (a working MQ module always outputs some voltage). Readings near full scale
-# are a strong smell, not a fault, so they are allowed.
-MIN_GAS_FRACTION = 0.01
+# A gas channel below 0.25 % of full scale (about 41 counts, 0.012 V at the
+# module output) means the sensor is not connected: with AO unplugged the 20 kΩ
+# divider leg pulls the pin to 0 V. A working MQ module can sit much lower than
+# expected, though: on the real board the Waveshare MQ-3 read 0.04-0.06 V in
+# clean air (about 130 counts), so the floor must stay well below that.
+# Readings near full scale are a strong smell, not a fault, and are allowed.
+MIN_GAS_FRACTION = 0.0025
 
 
 def _volts(raw: float) -> float:
