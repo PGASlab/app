@@ -223,11 +223,18 @@ def test_reply_goes_to_one_browser():
     assert sink.sent == [("pgas_command_reply", {"ok": True}, "sid-1"), ("pgas_command_reply", {"ok": False}, None)]
 
 
-def test_command_check_is_one_button_hood(tmp_path):
+def test_command_check_is_one_bag_test(tmp_path):
     r = command(tmp_path, {"action": "check"})
     assert r["ok"] and r["label"] == "check"
     (job,) = _pending(tmp_path)
-    assert job["kind"] == "hood" and job["params"] == {"label": "check"}
+    assert job["kind"] == "bag" and job["params"] == {"label": "check"}
+
+
+def test_command_next_calls_runtime(tmp_path):
+    pressed = []
+    assert command(tmp_path, {"action": "next"}, on_next=lambda: pressed.append(1))["ok"]
+    assert pressed == [1] and _pending(tmp_path) == []
+    assert command(tmp_path, {"action": "next"})["error"] == "not_running"
 
 
 def test_progress_and_rule_result_reach_the_page():

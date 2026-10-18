@@ -28,8 +28,15 @@ const I18N = {
     retest: 'please re-test',
     foot: 'Served by the board over Wi-Fi · works offline', raw: 'raw',
     check_h: 'Is this food still good?',
-    check_help: "Press the button, then follow the letter on the board's LED matrix: A = hold the box in clean air, M = move it over the food, H = hold still 3–5 cm above it, V = lift it away.",
-    check_btn: 'Test freshness', checking: 'Testing…',
+    check_help: 'The three gas sensors are tested one at a time: each reads clean air for 3 s, goes into the bag with the food, and is measured for 5 s. The page tells you what to do at every step.',
+    check_btn: 'Start test', checking: 'Testing…', next_btn: (n) => `Ready – test ${n}`, cancel: 'Cancel',
+    st_active: 'testing', st_next: 'next',
+    sensor_of: (k) => `Sensor ${k} of 3`,
+    in_idle: 'Hold MQ-135 outside the bag in clean air, then press Start test.',
+    in_baseline: (n) => `Hold ${n} outside the bag, in clean air`,
+    in_move: (n) => `Put ${n} into the bag now and close it around the sensor`,
+    in_measure: (n) => `Measuring ${n} in the bag – keep it still`,
+    in_wait: (n, p) => `${p} done ✓ Take ${p} out of the bag, hold ${n} outside in clean air, then press the button.`,
     ph_starting: 'Starting…', ph_baseline: 'A · Hold the box in clean air, away from food',
     ph_move: 'M · Move the box over the food now', ph_expose: 'H · Hold still over the food',
     ph_recover: 'V · Lift the box away and let it air out', ph_analyse: 'Analysing the smell…',
@@ -60,8 +67,15 @@ const I18N = {
     retest: '請重新測試',
     foot: '由板子透過 Wi-Fi 提供 · 不需要網際網路', raw: '原始值',
     check_h: '這份食物還能吃嗎？',
-    check_help: '按下按鈕後，照板子 LED 矩陣上的字母做：A = 盒子拿在乾淨空氣中，M = 移到食物上方，H = 在食物上方 3–5 公分保持不動，V = 移開散味。',
-    check_btn: '測試新鮮度', checking: '測試中…',
+    check_help: '三顆氣體感測器會依序測：每顆先在乾淨空氣中量 3 秒，再放進裝食物的袋子裡量 5 秒。每一步頁面都會告訴你要做什麼。',
+    check_btn: '開始測試', checking: '測試中…', next_btn: (n) => `準備好了，測 ${n}`, cancel: '取消',
+    st_active: '測試中', st_next: '下一個',
+    sensor_of: (k) => `第 ${k} / 3 顆感測器`,
+    in_idle: '先把 MQ-135 拿在袋子外的乾淨空氣中，再按「開始測試」。',
+    in_baseline: (n) => `把 ${n} 拿在袋子外的乾淨空氣中`,
+    in_move: (n) => `現在把 ${n} 放進袋子裡，袋口收緊包住感測器`,
+    in_measure: (n) => `${n} 在袋子裡量測中，請保持不動`,
+    in_wait: (n, p) => `${p} 完成 ✓ 把 ${p} 拿出袋子，把 ${n} 拿在袋子外的乾淨空氣中，準備好後按下面的按鈕。`,
     ph_starting: '準備中…', ph_baseline: 'A · 盒子拿在乾淨空氣中，遠離食物',
     ph_move: 'M · 現在把盒子移到食物上方', ph_expose: 'H · 在食物上方保持不動',
     ph_recover: 'V · 把盒子移開，讓它散味', ph_analyse: '正在分析氣味…',
@@ -149,8 +163,8 @@ function showValues(p) {
   $('v-rh').textContent = dhtOk ? fmt(p.rh_pct, 0) : '—';
   $('dht-note').hidden = dhtOk;
   if (Array.isArray(p.raw)) { lastRaw = p.raw; renderRaw(); }
-  if (p.job && (!job || job.done) && !pending && p.job.startsWith('hood')) {
-    job = { id: p.job.split(' ').pop(), kind: 'hood', pct: (job && !job.done && job.pct) || 0, done: false };
+  if (p.job && (!job || job.done) && !pending && p.job.startsWith('bag')) {
+    job = { id: p.job.split(' ').pop(), kind: 'bag', done: false };
     renderJob();
   }
 }
@@ -188,14 +202,15 @@ function renderStatus() {
   document.querySelector('.tiles').classList.toggle('stale-data', cls === 'stale');
 }
 
-// ------------------------------------------------------------ one-button freshness test
-// Progress: each phase of the hood test fills its own share of the bar.
-const PHASES = {
-  baseline: [0, 30], move: [30, 35], expose: [35, 80], recover: [80, 95], analyse: [95, 100],
-};
+// ------------------------------------------------------------ guided bag test, one sensor at a time
+// pgas.session.run_bag: for each sensor, 3 s clean air -> 3 s into the bag -> 5 s measuring,
+// then the operator swaps sensors and presses Next.
+const SENSORS = ['mq135', 'mq3', 'mq2'];
+const NAMES = { mq135: 'MQ-135', mq3: 'MQ-3', mq2: 'MQ-2' };
+const STEP_SHARE = { baseline: [0, 3 / 11], move: [3 / 11, 6 / 11], measure: [6 / 11, 1], wait: [0, 0] };
 let ui = null;
-let pending = false;  // the button was pressed and the job has not reported yet
-let shownResult = null; // id of the job whose result popup was shown
+let pending = false;    // a command was sent and has not been answered by a job update
+let shownResult = null; // id of the job whose result pop-up was shown
 
 function say(text, err) {
   const el = $('start-msg');
@@ -203,26 +218,67 @@ function say(text, err) {
   el.classList.toggle('err', !!err);
 }
 
+const running = () => !!(job && !job.done && job.kind === 'bag');
+const waiting = () => running() && job.step === 'wait';
+
+function renderSteps() {
+  const k = running() ? SENSORS.indexOf(job.s) : -1;
+  document.querySelectorAll('#steps li').forEach((li, i) => {
+    let st = 'todo';
+    if (job && job.done && job.kind === 'bag' && job.state === 'done') st = 'done';
+    else if (k >= 0) st = i < k ? 'done' : i === k ? (job.step === 'wait' ? 'next' : 'active') : 'todo';
+    li.className = st;
+    const r = job && job.done && job.rises_v ? Number(job.rises_v[SENSORS[i]]) : NaN;
+    li.querySelector('.st').textContent = st === 'done' ? (Number.isFinite(r) ? `${r >= 0 ? '+' : ''}${r.toFixed(2)} V` : '✓')
+      : st === 'active' ? T('st_active') : st === 'next' ? T('st_next') : '';
+  });
+}
+
 function renderButtons() {
   const btn = $('check-btn');
-  const running = !!(job && !job.done);
-  btn.disabled = conn !== 'connected' || running || pending;
-  btn.textContent = running || pending ? T('checking') : T('check_btn');
+  const online = conn === 'connected';
+  if (waiting()) {
+    btn.disabled = !online || pending;
+    btn.textContent = T('next_btn')(NAMES[job.s]);
+  } else if (running()) {
+    btn.disabled = true;
+    btn.textContent = T('checking');
+  } else {
+    btn.disabled = !online || pending;
+    btn.textContent = pending ? T('checking') : T('check_btn');
+  }
+  $('cancel-btn').hidden = !running();
 }
 
 function renderJob() {
   const box = $('progress');
-  const running = !!(job && !job.done && job.kind === 'hood');
-  box.hidden = !running && !(job && job.done && job.kind === 'hood' && job.state === 'done');
-  if (job && job.kind === 'hood') {
-    let pct = job.pct || 0;
-    if (job.done) pct = 100;
+  const instr = $('instr');
+  if (running()) {
+    box.hidden = false;
+    const k = Math.max(0, SENSORS.indexOf(job.s));
+    const [a, b] = STEP_SHARE[job.step] || [0, 0];
+    const f = job.n ? Math.min(1, (job.i + 1) / job.n) : 0;
+    const pct = job.step === 'wait' ? (k / 3) * 100 : ((k + a + (b - a) * f) / 3) * 100;
     $('bar-fill').style.width = `${pct}%`;
     $('bar').setAttribute('aria-valuenow', String(Math.round(pct)));
-    const phase = job.done ? (job.state === 'done' ? 'done' : 'stopped') : (job.phase || 'starting');
-    const left = job.n && job.phase !== 'analyse' ? Math.max(0, job.n - job.i) : null;
-    $('phase-text').textContent = T(`ph_${phase}`) + (left !== null && phase !== 'recover' ? ` · ${left} s` : '');
+    const left = job.step !== 'wait' && job.n ? Math.max(0, job.n - job.i) : null;
+    $('phase-text').textContent = `${T('sensor_of')(k + 1)}${left !== null ? ` · ${left} s` : ''}`;
+    const name = NAMES[job.s];
+    const prev = k > 0 ? NAMES[SENSORS[k - 1]] : '';
+    instr.textContent = T(`in_${job.step}`)(name, prev);
+    instr.className = `instr ${job.step}`;
+  } else if (job && job.done && job.kind === 'bag' && job.state === 'done') {
+    box.hidden = false;
+    $('bar-fill').style.width = '100%';
+    $('phase-text').textContent = T('ph_done');
+    instr.textContent = '';
+    instr.className = 'instr';
+  } else {
+    box.hidden = true;
+    instr.textContent = T('in_idle');
+    instr.className = 'instr';
   }
+  renderSteps();
   renderButtons();
 }
 
@@ -230,7 +286,6 @@ function showResult(m) {
   if (!m || shownResult === m.id) return;
   shownResult = m.id;
   const box = $('result');
-  const card = box.querySelector('.modal');
   let cls, title, detail = '';
   if (m.state === 'done' && m.grade) {
     const ok = m.grade === 'FRESH';
@@ -239,15 +294,20 @@ function showResult(m) {
     detail = m.grade === 'SPOILING' ? T('res_spoiling') : ok ? T('res_good_d') : T('res_bad_d');
   } else if (m.state === 'rejected') {
     cls = 'warn'; title = T('res_busy');
+  } else if (m.state === 'failed' && !m.retest && /stopped/.test(m.error || '')) {
+    return; // cancelled by the user: no pop-up
   } else {
     cls = 'warn'; title = T('res_retest');
     detail = m.error ? String(m.error) : '';
   }
-  card.className = `modal ${cls}`;
+  box.querySelector('.modal').className = `modal ${cls}`;
   $('result-icon').textContent = cls === 'good' ? '✓' : cls === 'bad' ? '✕' : '!';
   $('result-title').textContent = title;
   $('result-detail').textContent = detail;
-  $('result-note').textContent = m.method === 'rule' ? T('res_rule') : '';
+  const r = m.rises_v;
+  const vals = r ? SENSORS.filter((s) => r[s] !== undefined && r[s] !== null)
+    .map((s) => `${NAMES[s]} ${r[s] >= 0 ? '+' : ''}${Number(r[s]).toFixed(2)} V`).join(' · ') : '';
+  $('result-note').textContent = [vals, m.method === 'rule' ? T('res_rule') : ''].filter(Boolean).join('\n');
   box.hidden = false;
   requestAnimationFrame(() => box.classList.add('show'));
   $('result-ok').focus();
@@ -264,30 +324,35 @@ function onJob(m) {
   pending = false;
   if (m.state === 'running') {
     const same = job && job.id === m.id;
-    job = Object.assign(same ? job : { id: m.id, kind: m.kind, pct: 0 }, { done: false });
-    if (m.phase && PHASES[m.phase]) {
-      const [a, b] = PHASES[m.phase];
-      const f = m.n ? Math.min(1, (m.i + 1) / m.n) : 0;
-      job.phase = m.phase; job.i = m.i; job.n = m.n;
-      job.pct = Math.max(job.pct || 0, a + (b - a) * f);
+    job = Object.assign(same ? job : { id: m.id, kind: m.kind }, { done: false });
+    if (m.phase && m.phase.includes(':')) {
+      const [step, sensor] = m.phase.split(':');
+      Object.assign(job, { step, s: sensor, i: m.i, n: m.n });
     }
   } else {
     job = Object.assign({}, job && job.id === m.id ? job : { id: m.id, kind: m.kind }, m, { done: true });
-    if (m.kind === 'hood' || m.state === 'rejected') showResult(m);
+    if (m.kind === 'bag' || m.state === 'rejected') showResult(m);
   }
   renderJob();
 }
 
+function send(cmd) {
+  if (!ui || conn !== 'connected') { say(T('not_connected'), true); return; }
+  say('');
+  pending = true;
+  renderButtons();
+  ui.send_message('pgas_command', cmd);
+  setTimeout(() => { if (pending) { pending = false; renderButtons(); } }, 6000);
+}
+
 function wireButtons() {
   $('check-btn').addEventListener('click', () => {
-    if (!ui || conn !== 'connected') { say(T('not_connected'), true); return; }
-    say('');
-    pending = true;
+    if (waiting()) { send({ action: 'next' }); return; }
     job = null;
+    send({ action: 'check' });
     renderJob();
-    ui.send_message('pgas_command', { action: 'check' });
-    setTimeout(() => { if (pending) { pending = false; renderButtons(); } }, 6000);
   });
+  $('cancel-btn').addEventListener('click', () => send({ action: 'stop' }));
   $('result-ok').addEventListener('click', closeResult);
   $('result').addEventListener('click', (e) => { if (e.target === $('result')) closeResult(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('result').hidden) closeResult(); });

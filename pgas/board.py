@@ -19,9 +19,10 @@ import time
 import traceback
 from pathlib import Path
 
-from . import config, display, jobs, notify, selftest
+from . import agent, config, display, jobs, notify, rules, selftest
 from .dataio import CaptureWriter
-from .session import ContinuousState, Reading, RetestError, run_continuous, run_hood
+from .session import (BAG_WAIT_MAX_S, ContinuousState, Reading, RetestError, run_bag, run_continuous,
+                      run_hood)
 
 
 class QueueSource:
@@ -80,6 +81,7 @@ class Runtime:
         self.busy = threading.Lock()
         self.stop_event = threading.Event()
         self.current: str | None = None
+        self.next_event = threading.Event()  # "Next sensor" pressed on the dashboard
         self.feed = feed  # pgas.web.LiveFeed or None; its methods never raise
         if analyze is None:
             from .pipeline import analyze
@@ -147,6 +149,8 @@ class Runtime:
                     st.log(out.get("note", "no grade"))
                 _annotate(Path(res.csv), out)
                 st.finish("done", out)
+            elif kind == "bag":
+                self._bag(p, st)
             elif kind == "continuous":
                 self._continuous(job, st, resume)
             elif kind == "selftest":
@@ -166,6 +170,33 @@ class Runtime:
         finally:
             self.current = None
             self.busy.release()
+
+    def press_next(self) -> None:
+        self.next_event.set()
+
+    def _wait_next(self, max_s: float = BAG_WAIT_MAX_S) -> bool:
+        self.next_event.clear()
+        t0 = time.monotonic()
+        while not self.next_event.wait(0.5):
+            if self.stop_event.is_set():
+                return False
+            if time.monotonic() - t0 > max_s:
+                raise RetestError("waiting for the next sensor", f"Next was not pressed within {max_s:.0f} s")
+        return True
+
+    def _bag(self, p: dict, st) -> None:
+        res = run_bag(self.source, self.disp, self.raw_dir, p.get("label", "check"), self._wait_next,
+                      log=st.log, progress=getattr(st, "progress", None), stop=self.stop_event)
+        feats = {f"{s}_d_peak": v for s, v in res.rises.items()}
+        grade, rises = rules.quick_grade(feats)
+        adv = agent.advise(grade, feats, p.get("label", "check"), use_llm=False)
+        out = {"grade": grade, "method": "rule", "rises_v": rises, "advice": adv.text,
+               "capture_s": round(res.capture_s, 1)}
+        self.disp.show(display.icon(grade))
+        st.log(f"GRADE: {grade}")
+        st.log(f"ADVICE: {adv.text}")
+        _annotate(Path(res.csv), out)
+        st.finish("done", out)
 
     def _continuous(self, job: dict, st: jobs.Status, resume: ContinuousState | None) -> None:
         p = job.get("params", {})

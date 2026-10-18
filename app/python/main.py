@@ -31,7 +31,7 @@ runtime.resume_if_needed()
 def on_command(*args):
     # web_ui calls back with (sid, data); accept (data) too.
     sid = args[0] if len(args) > 1 else None
-    reply = command(runtime.jobs_dir, args[-1] if args else None)
+    reply = command(runtime.jobs_dir, args[-1] if args else None, on_next=runtime.press_next)
     print(f"dashboard command: {reply}", flush=True)
     if feed is not None:
         feed.reply(sid, reply)

@@ -32,12 +32,19 @@
 
       <section class="check" aria-labelledby="check-h">
         <h2 id="check-h" data-i18n="check_h">Is this food still good?</h2>
-        <p class="check-help" data-i18n="check_help">Press the button, then follow the letter on the board's LED matrix.</p>
-        <button id="check-btn" class="big" type="button" disabled data-i18n="check_btn">Test freshness</button>
+        <p class="check-help" data-i18n="check_help">The three gas sensors are tested one at a time.</p>
+        <ol class="steps" id="steps">
+          <li><span class="n">1</span><span class="nm">MQ-135</span><span class="st"></span></li>
+          <li><span class="n">2</span><span class="nm">MQ-3</span><span class="st"></span></li>
+          <li><span class="n">3</span><span class="nm">MQ-2</span><span class="st"></span></li>
+        </ol>
+        <p id="instr" class="instr" aria-live="polite"></p>
         <div class="progress" id="progress" hidden>
           <div class="bar" id="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="phase-text"><span id="bar-fill"></span></div>
           <p id="phase-text" class="phase"></p>
         </div>
+        <button id="check-btn" class="big" type="button" disabled data-i18n="check_btn">Start test</button>
+        <button id="cancel-btn" class="cancel" type="button" hidden data-i18n="cancel">Cancel</button>
         <p id="start-msg" class="start-msg" role="status"></p>
       </section>
 

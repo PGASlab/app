@@ -51,6 +51,8 @@ def build_dataset(data_dir: Path, window_rows: int = 30) -> Dataset:
     for path in list_captures(data_dir):
         cap = load_capture(path)
         synthetic |= bool(cap.meta.get("synthetic"))
+        if cap.mode == "bag":
+            continue  # one sensor at a time in a bag: different features, not used for training yet
         if cap.mode == "continuous":
             wins = continuous_windows(cap, window_rows=window_rows, step_rows=window_rows)
             grades = labeling.label_continuous(wins)

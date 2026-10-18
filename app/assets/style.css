@@ -99,7 +99,31 @@ button.big {
 }
 button.big:active:not(:disabled) { transform: scale(0.98); }
 button.big:disabled { opacity: 0.5; cursor: not-allowed; }
-.progress { margin-top: 14px; }
+.steps { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 12px; padding: 0; }
+.steps li {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; border-radius: 12px;
+  border: 2px solid var(--line); background: var(--bg); transition: border-color 0.2s ease, background 0.2s ease;
+}
+.steps .n {
+  width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 800;
+  background: var(--line); color: var(--ink);
+}
+.steps .nm { font-weight: 700; font-size: 15px; }
+.steps .st { font-size: 12px; color: var(--muted); min-height: 1.2em; font-family: var(--mono); }
+.steps li.active { border-color: var(--ink); }
+.steps li.active .n { background: var(--ink); color: var(--bg); animation: pulse 1s ease-in-out infinite; }
+.steps li.next { border-style: dashed; border-color: var(--warn); }
+.steps li.done { border-color: var(--ok); }
+.steps li.done .n { background: var(--ok); color: #fff; }
+.instr { margin: 0 0 12px; font-size: 19px; font-weight: 700; min-height: 1.4em; }
+.instr.move { color: var(--warn); }
+.instr.wait { color: var(--ok); }
+.progress { margin: 0 0 14px; }
+button.cancel {
+  display: block; margin: 10px auto 0; background: none; border: 0; color: var(--muted); font: inherit; font-size: 15px;
+  text-decoration: underline; cursor: pointer; min-height: 44px; padding: 0 12px;
+}
+button.cancel[hidden] { display: none; }
 .bar { height: 14px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); overflow: hidden; }
 .bar span {
   display: block; height: 100%; width: 0; border-radius: 999px; transition: width 0.9s linear;
@@ -135,7 +159,7 @@ button.big:disabled { opacity: 0.5; cursor: not-allowed; }
 .modal.good h2 { color: var(--ok); }
 .modal.bad h2 { color: var(--bad); }
 .modal p { margin: 10px 0 0; font-size: 16px; }
-.result-note { color: var(--muted); font-size: 13px !important; }
+.result-note { color: var(--muted); font-size: 13px !important; white-space: pre-line; }
 .modal button {
   margin-top: 18px; min-height: 48px; min-width: 140px; border-radius: 12px; border: 0; cursor: pointer;
   background: var(--ink); color: var(--bg); font: inherit; font-size: 17px; font-weight: 700;

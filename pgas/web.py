@@ -13,8 +13,9 @@ Events sent to the browser:
     pgas_command_reply  the answer to a pgas_command from that browser
 
 Events received from the browser (see `command`):
-    pgas_command  {"action": "check"}: one hood test labelled "check" (not used
-                  for training); {"action": "hood", "food": "...", "state": "fresh"}
+    pgas_command  {"action": "check"}: one bag test (each sensor in turn, labelled
+                  "check", not used for training); {"action": "next"}: the
+                  next sensor is ready; {"action": "hood", "food": "...", "state": "fresh"}
                   for a labelled capture; {"action": "selftest"} / {"action": "stop"}
 
 Every public method swallows its own errors: it is called from the Bridge
@@ -157,7 +158,7 @@ class LiveFeed:
         self._send("pgas_command_reply", payload, room=sid if isinstance(sid, str) else None)
 
 
-def command(jobs_dir, data) -> dict:
+def command(jobs_dir, data, on_next=None) -> dict:
     """Handle a pgas_command from the dashboard by queueing a job.
 
     The job goes through the same file queue as `python -m pgas.capture`, so a
@@ -178,8 +179,14 @@ def command(jobs_dir, data) -> dict:
             return {"ok": True, "action": action, "label": label,
                     "id": jobs.submit(jobs_dir, "hood", label=label)}
         if action == "check":
+            # One sensor at a time in a small bag (pgas.session.run_bag).
             return {"ok": True, "action": action, "label": "check",
-                    "id": jobs.submit(jobs_dir, "hood", label="check")}
+                    "id": jobs.submit(jobs_dir, "bag", label="check")}
+        if action == "next":
+            if on_next is None:
+                return {"ok": False, "action": action, "error": "not_running"}
+            on_next()
+            return {"ok": True, "action": action}
         if action in ("selftest", "stop"):
             return {"ok": True, "action": action, "id": jobs.submit(jobs_dir, action)}
         return {"ok": False, "action": action, "error": "bad_action"}
