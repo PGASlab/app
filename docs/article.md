@@ -1,29 +1,57 @@
 ---
-title: "PGAS: an AI nose on the Arduino UNO Q that tells you when food has gone bad"
+title: "LLMs Have No Nose, So We Built One: an AI Nose on the Arduino UNO Q"
 published: false
 tags: arduino, iot, ai, devchallenge
-cover_image: "https://raw.githubusercontent.com/PGASlab/app/main/docs/images/preview.jpg"
+cover_image: "https://raw.githubusercontent.com/PGASlab/app/main/docs/images/00-hero.jpg"
 ---
+
+![LLMs have no nose. What if we built one?](https://raw.githubusercontent.com/PGASlab/app/main/docs/images/00-hero.jpg)
 
 *Submission for the **Best Use of Arduino** prize: a physical agent that senses and acts, built on the Arduino UNO Q.*
 
 ▶ **Code (MIT):** [github.com/PGASlab/app](https://github.com/PGASlab/app)
 ▶ **Try it without hardware:** [live UNO Q simulation](https://claude.ai/artifact/BoE3spE76moKDwF9TGCZLH)
 
-## The modern silver spoon
+## LLMs have no nose
 
-For centuries people tested food with a silver spoon, because silver turns black
-when it meets the sulfides that spoiling food gives off. PGAS does the same job
-with three gas sensors and an Arduino UNO Q. It smells the food, decides on the
-board whether it is fine or has gone bad, and then acts: the LED matrix on the
-board flashes a warning, an alert goes out, and your phone shows the verdict.
+AI can read, write, see and listen. Ask a chatbot whether the milk in your
+fridge has gone off, though, and the honest answer is *"I can't tell, I can't
+smell it."* Smell is the one sense we use every day to keep ourselves safe from
+bad food, and AI simply doesn't have it.
 
-We built it for night-market stalls and small food businesses. Selling spoiled
-food is a health risk, and throwing away food that is still good is waste. PGAS
-runs entirely on the board, from a power bank. It needs no cloud, no account
-and no internet once it is set up.
+So we built one.
 
-Below is one real test, photo by photo.
+## Every sensor is a small nose
+
+![Every sensor is a small nose: MQ-135, MQ-3 and MQ-2](https://raw.githubusercontent.com/PGASlab/app/main/docs/images/00-small-noses.jpg)
+
+A nose works because different receptors respond to different molecules. PGAS
+copies the idea with three cheap metal-oxide gas sensors, each tuned to a
+different family of spoilage gases:
+
+- **MQ-135** smells ammonia and sulfides, the "rotten egg" end of spoilage.
+- **MQ-3** smells ethanol, which bacteria and yeasts make as food ferments.
+- **MQ-2** smells a broad range of volatile organic compounds.
+
+On their own, each is just a resistor that changes with the air around it.
+
+## Together, they make one big nose
+
+![Together, they make one big nose](https://raw.githubusercontent.com/PGASlab/app/main/docs/images/00-big-nose.jpg)
+
+Wired to an **Arduino UNO Q**, the three small noses become one. The UNO Q's
+microcontroller samples all three every second. Its Linux side compares them
+with clean air, decides whether the food is fine, and then **acts**: the LED
+matrix on the board flashes a warning, an alert goes out, and your phone shows
+the verdict. No cloud, no account, no internet. It all happens on a board that
+runs from a power bank.
+
+People once tested food with a silver spoon, because silver turns black when it
+meets the sulfides of rotting food. PGAS is the modern silver spoon. We built it
+for night-market stalls and small food businesses, where selling spoiled food
+is a health risk and throwing away good food is waste.
+
+Here is one real test, photo by photo, on a bottle of milk that had gone bad.
 
 ## 1. The parts
 
