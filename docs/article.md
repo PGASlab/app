@@ -9,6 +9,7 @@ cover_image: "https://raw.githubusercontent.com/PGASlab/app/main/docs/images/00-
 
 *This is a submission for the [Hacktoberfest Open-Source AI Challenge: Side Hustle](https://dev.to/challenges/hacktoberfest-week2-2026-10-12).*
 
+▶ **Demo video (3:11):** [youtu.be/n88pRiuib3U](https://youtu.be/n88pRiuib3U)
 ▶ **Code (MIT):** [github.com/PGASlab/app](https://github.com/PGASlab/app)
 ▶ **Try it without hardware:** [live UNO Q simulation](https://claude.ai/artifact/BoE3spE76moKDwF9TGCZLH)
 
@@ -63,7 +64,7 @@ phone.
 
 ## Demo
 
-▶ **Video:** [VIDEO_URL]
+{% embed https://youtu.be/n88pRiuib3U %}
 
 Here is one real test, photo by photo, on a bottle of milk that had gone bad.
 
