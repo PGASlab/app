@@ -219,6 +219,10 @@ eat it, and ask a professional.
 ## Contributors
 
 - [@k66inthesky](https://github.com/k66inthesky)
+- [Alice](https://github.com/Alitsen777)
+- [29](https://github.com/0x29dev)
+- [Crystal](https://github.com/Crystal32378)
+- [Cynthia](https://github.com/cynthiachi-268)
 - [Claude](https://claude.ai/code), AI pair programmer
 
 ## License
