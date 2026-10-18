@@ -16,7 +16,7 @@ BOOT=0
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 mkdir -p "$STAGE/python" "$STAGE/models"
-cp app/app.yaml "$STAGE/"
+cp app/app.yaml app/keepalive.sh "$STAGE/"
 cp -R app/sketch "$STAGE/"
 cp -R app/assets "$STAGE/assets"   # web_ui brick serves /app/assets
 cp app/python/main.py app/python/requirements.txt "$STAGE/python/"
@@ -35,14 +35,18 @@ board "mkdir -p $APP_DIR/data/raw $APP_DIR/data/jobs/pending $APP_DIR/data/jobs/
 echo "starting user:pgas (first start compiles the sketch and installs Python packages; needs internet once) ..."
 # Flashing the MCU sometimes fails once with "Error requesting gpio line swdio"
 # (the SWD lines are still held right after the app stops); retry once.
+board "touch /tmp/pgas-deploying"   # pauses the keep-alive while we restart the app
 if ! board "arduino-app-cli app stop user:pgas >/dev/null 2>&1 || true; sleep 3; arduino-app-cli app start user:pgas"; then
   echo "start failed - retrying once in 10 s ..."
   sleep 10
-  board "arduino-app-cli app start user:pgas"
+  board "arduino-app-cli app start user:pgas" || { board "rm -f /tmp/pgas-deploying"; exit 1; }
 fi
+board "rm -f /tmp/pgas-deploying"
 if [ "$BOOT" = 1 ]; then
   board "arduino-app-cli properties set default user:pgas"
-  echo "PGAS will start automatically at power-on."
+  # Keep-alive: every minute, restart PGAS if a reset left it stopped.
+  board "chmod +x $APP_DIR/keepalive.sh; (crontab -l 2>/dev/null | grep -v pgas-keepalive; echo '* * * * * $APP_DIR/keepalive.sh # pgas-keepalive') | crontab - || echo 'note: crontab unavailable, keep-alive not installed'"
+  echo "PGAS will start automatically at power-on (and is restarted within a minute if it stops)."
 fi
 echo "done. Follow the app log with:"
 if [ "$MODE" = adb ]; then
