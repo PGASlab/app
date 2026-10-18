@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://youtu.be/n88pRiuib3U">Demo video</a> ·
   <a href="docs/article.md">Article</a> ·
-  <a href="https://claude.ai/artifact/BoE3spE76moKDwF9TGCZLH">Live simulation</a> ·
+  <a href="https://pgaslab.github.io/pgas-sim/">Live simulation</a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="#how-it-works">How it works</a> ·
   <a href="#results">Results</a>
