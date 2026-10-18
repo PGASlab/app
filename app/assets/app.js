@@ -27,6 +27,15 @@ const I18N = {
     job_h: 'Current test', job_done: 'Last test', grade: 'Grade', advice: 'Advice', failed: 'Stopped',
     retest: 'please re-test',
     foot: 'Served by the board over Wi-Fi · works offline', raw: 'raw',
+    start_h: 'Test food', food_l: 'Food name (English letters)', state_l: 'Condition',
+    st_fresh: 'Fresh', st_spoiling: 'Going off', st_spoiled: 'Spoiled', st_swill: 'Food waste',
+    st_test: 'Just testing (not used for training)',
+    start_btn: 'Start test', selftest_btn: 'Self-test', stop_btn: 'Stop',
+    start_help: "Follow the letter on the board's LED matrix: A = hold in clean air, M = move over the food, H = hold still, V = lift away.",
+    sent: (l) => `Sent: ${l}. Starting on the board…`, sent_other: 'Sent to the board.',
+    bad_food: 'Type the food name in English letters or numbers, e.g. soymilk_soup.',
+    bad_state: 'Pick a condition.', not_connected: 'Not connected to the board yet.',
+    cmd_failed: (e) => `The board could not start it: ${e}`, busy: 'Another test is running. Press Stop first.',
   },
   zh: {
     live: '即時', sub: '感測器現在聞到的氣味',
@@ -44,6 +53,15 @@ const I18N = {
     job_h: '目前的測試', job_done: '上一次測試', grade: '等級', advice: '建議', failed: '已中斷',
     retest: '請重新測試',
     foot: '由板子透過 Wi-Fi 提供 · 不需要網際網路', raw: '原始值',
+    start_h: '測試食物', food_l: '食物名稱（英文字母）', state_l: '狀態',
+    st_fresh: '新鮮', st_spoiling: '快壞了', st_spoiled: '壞掉了', st_swill: '廚餘',
+    st_test: '只是測試（不拿去訓練）',
+    start_btn: '開始測試', selftest_btn: '自我檢測', stop_btn: '停止',
+    start_help: '照板子 LED 矩陣上的字母做：A = 拿在乾淨空氣中，M = 移到食物上方，H = 保持不動，V = 移開散味。',
+    sent: (l) => `已送出：${l}，板子正在開始…`, sent_other: '已送到板子。',
+    bad_food: '請用英文字母或數字輸入食物名稱，例如 soymilk_soup。',
+    bad_state: '請選擇狀態。', not_connected: '還沒連上板子。',
+    cmd_failed: (e) => `板子無法開始：${e}`, busy: '另一個測試正在進行，請先按「停止」。',
   },
 };
 let lang = 'en';
@@ -171,6 +189,10 @@ function renderJob() {
     res.hidden = false;
     res.classList.add(job.grade);
     res.textContent = `${T('grade')}: ${job.grade}${job.advice ? ` · ${T('advice')}: ${job.advice}` : ''}`;
+  } else if (job.done && job.state === 'rejected') {
+    res.hidden = false;
+    res.classList.add('rejected');
+    res.textContent = T('busy');
   } else if (job.done && job.state === 'failed') {
     res.hidden = false;
     res.classList.add('failed');
@@ -182,6 +204,7 @@ function renderJob() {
 
 function onJob(m) {
   if (!m) return;
+  pending = false;
   const name = `${m.kind} job ${m.id}`;
   if (m.state === 'running') {
     job = { name, line: m.line, done: false };
@@ -189,6 +212,70 @@ function onJob(m) {
     job = Object.assign({}, job && job.name === name ? job : { name, line: '' }, m, { name, done: true });
   }
   renderJob();
+  renderButtons();
+}
+
+// ------------------------------------------------------------ start / self-test / stop
+let ui = null;
+let pending = false; // a command was sent and its job has not started yet
+
+const FOOD_RE = /^[a-z0-9]+(?:_[a-z0-9]+)*$/;
+function cleanFood(v) {
+  return String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_').replace(/^_+|_+$/g, '');
+}
+
+function say(text, err) {
+  const el = $('start-msg');
+  el.textContent = text || '';
+  el.classList.toggle('err', !!err);
+}
+
+function renderButtons() {
+  const online = conn === 'connected';
+  const running = !!(job && !job.done);
+  $('start-btn').disabled = !online || running || pending;
+  $('selftest-btn').disabled = !online || running || pending;
+  $('stop-btn').disabled = !online;
+}
+
+function send(cmd) {
+  if (!ui || conn !== 'connected') { say(T('not_connected'), true); return false; }
+  pending = true;
+  renderButtons();
+  ui.send_message('pgas_command', cmd);
+  setTimeout(() => { pending = false; renderButtons(); }, 4000);
+  return true;
+}
+
+function onReply(r) {
+  if (!r) return;
+  if (r.ok) {
+    say(r.label ? T('sent')(r.label) : T('sent_other'));
+  } else {
+    pending = false;
+    const e = r.error === 'bad_food' ? T('bad_food') : r.error === 'bad_state' ? T('bad_state') : T('cmd_failed')(r.error);
+    say(e, true);
+  }
+  renderButtons();
+}
+
+function wireButtons() {
+  const food = $('food');
+  food.addEventListener('input', () => food.removeAttribute('aria-invalid'));
+  $('start-form').addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const f = cleanFood(food.value);
+    if (!f || f.length > 40 || !FOOD_RE.test(f)) {
+      food.setAttribute('aria-invalid', 'true');
+      say(T('bad_food'), true);
+      food.focus();
+      return;
+    }
+    food.value = f;
+    send({ action: 'hood', food: f, state: $('state').value });
+  });
+  $('selftest-btn').addEventListener('click', () => send({ action: 'selftest' }));
+  $('stop-btn').addEventListener('click', () => send({ action: 'stop' }));
 }
 
 function cssVar(name) {
@@ -267,9 +354,10 @@ function connect() {
     conn = 'no_client';
     return;
   }
-  const ui = new WebUI();
-  ui.on_connect(() => { conn = 'connected'; renderStatus(); });
-  ui.on_disconnect(() => { conn = 'disconnected'; renderStatus(); });
+  ui = new WebUI();
+  ui.on_connect(() => { conn = 'connected'; renderStatus(); renderButtons(); });
+  ui.on_disconnect(() => { conn = 'disconnected'; renderStatus(); renderButtons(); });
+  ui.on_message('pgas_command_reply', onReply);
   ui.on_message('pgas_sample', (p) => { addSample(p, true); tick(); });
   ui.on_message('pgas_history', (m) => {
     const list = (m && m.samples) || [];
@@ -289,7 +377,9 @@ document.addEventListener('DOMContentLoaded', () => {
   $('lang-en').addEventListener('click', () => setLang('en'));
   $('lang-zh').addEventListener('click', () => setLang('zh'));
   setLang(initialLang());
+  wireButtons();
   connect();
+  renderButtons();
   tick();
   setInterval(tick, 500);
   document.addEventListener('visibilitychange', tick);

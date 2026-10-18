@@ -30,6 +30,36 @@
         <span id="status-live" class="sr-only" role="status"></span>
       </div>
 
+      <section class="start" aria-labelledby="start-h">
+        <h2 id="start-h" data-i18n="start_h">Test food</h2>
+        <form id="start-form" novalidate>
+          <div class="fields">
+            <label class="field">
+              <span data-i18n="food_l">Food name (English letters)</span>
+              <input id="food" name="food" type="text" inputmode="latin" autocomplete="off"
+                     autocapitalize="none" spellcheck="false" maxlength="40" placeholder="soymilk_soup" required />
+            </label>
+            <label class="field">
+              <span data-i18n="state_l">Condition</span>
+              <select id="state" name="state">
+                <option value="fresh" data-i18n="st_fresh">Fresh</option>
+                <option value="spoiling" data-i18n="st_spoiling">Going off</option>
+                <option value="spoiled" data-i18n="st_spoiled">Spoiled</option>
+                <option value="swill" data-i18n="st_swill">Food waste</option>
+                <option value="test" data-i18n="st_test">Just testing (not used for training)</option>
+              </select>
+            </label>
+          </div>
+          <div class="actions">
+            <button type="submit" id="start-btn" class="primary" data-i18n="start_btn">Start test</button>
+            <button type="button" id="selftest-btn" data-i18n="selftest_btn">Self-test</button>
+            <button type="button" id="stop-btn" data-i18n="stop_btn">Stop</button>
+          </div>
+          <p id="start-msg" class="start-msg" role="status"></p>
+          <p class="start-help" data-i18n="start_help">Follow the letter on the board's LED matrix: A = hold in clean air, M = move over the food, H = hold still, V = lift away.</p>
+        </form>
+      </section>
+
       <section class="job" id="job" hidden>
         <h2 data-i18n="job_h">Current test</h2>
         <p id="job-name" class="job-name"></p>

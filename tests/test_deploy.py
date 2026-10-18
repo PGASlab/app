@@ -54,11 +54,16 @@ FAKE_APP_UTILS = textwrap.dedent('''
 
 # Fake arduino:web_ui brick: records every Socket.IO message as one JSON line.
 FAKE_WEB_UI = textwrap.dedent('''
-    import json, os
+    import json, os, threading, time
     class WebUI:
         def __init__(self, *a, **k):
             self.log = open(os.environ["FAKE_WEB_LOG"], "a", buffering=1)
         def on_connect(self, cb): self.connect_cb = cb
+        def on_message(self, event, cb):
+            # FAKE_PRESS: a browser sends this JSON as `event` shortly after start.
+            press = os.environ.get("FAKE_PRESS")
+            if press:
+                threading.Timer(0.5, cb, args=("sid-1", json.loads(press))).start()
         def send_message(self, event, message, room=None):
             self.log.write(json.dumps({"event": event, "message": message}) + "\\n")
 ''')
@@ -112,3 +117,38 @@ def test_deploy_and_run_on_fake_board(tmp_path):
     assert any(s["job"] and s["job"].startswith("hood job") for s in samples)
     assert any("STEP 1/3" in (j.get("line") or "") for j in job_msgs)
     assert job_msgs[-1]["state"] in ("done", "failed")
+
+
+def test_dashboard_button_starts_hood_on_fake_board(tmp_path):
+    app_dir = tmp_path / "ArduinoApps" / "pgas"
+    env = dict(os.environ, PATH=f"{_fake_bin(tmp_path)}:{os.environ['PATH']}",
+               PGAS_APP_DIR=str(app_dir), FAKE_LOG=str(tmp_path / "cli.log"))
+    out = subprocess.run(["bash", str(config.REPO_ROOT / "scripts" / "deploy.sh"), "fake.local"],
+                         env=env, capture_output=True, text=True, timeout=60)
+    assert out.returncode == 0, out.stderr
+    fake = tmp_path / "fake_site" / "arduino"
+    (fake / "app_bricks").mkdir(parents=True)
+    (fake / "__init__.py").write_text("")
+    (fake / "app_utils.py").write_text(FAKE_APP_UTILS)
+    (fake / "app_bricks" / "__init__.py").write_text("")
+    (fake / "app_bricks" / "web_ui.py").write_text(FAKE_WEB_UI)
+    web_log = tmp_path / "web.jsonl"
+    press = json.dumps({"action": "hood", "food": "Soymilk Soup", "state": "test"})
+    py = dict(os.environ, PYTHONPATH=str(tmp_path / "fake_site"), FAKE_WEB_LOG=str(web_log), FAKE_PRESS=press)
+    proc = subprocess.Popen([sys.executable, "main.py"], cwd=app_dir / "python", env=py,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    try:
+        deadline = time.time() + 60
+        done = []
+        while time.time() < deadline and not done:
+            time.sleep(0.2)
+            if web_log.exists():
+                msgs = [json.loads(line) for line in web_log.read_text().splitlines()]
+                done = [m for m in msgs if m["event"] == "pgas_job" and m["message"]["state"] != "running"]
+    finally:
+        proc.kill()
+        proc.wait()
+    replies = [m for m in msgs if m["event"] == "pgas_command_reply"]
+    assert replies and replies[0]["message"]["ok"] and replies[0]["message"]["label"] == "test_soymilk_soup"
+    assert done and done[0]["message"]["kind"] == "hood"
+    assert list((app_dir / "data" / "raw").glob("*_hood_test_soymilk_soup.csv"))
