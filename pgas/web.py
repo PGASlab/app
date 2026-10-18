@@ -10,6 +10,13 @@ Events sent to the browser:
     pgas_sample   one reading (see `LiveFeed.sample`)
     pgas_history  the last few minutes of readings, sent to a client on connect
     pgas_job      a job log line or the end of a job (grade / advice / error)
+    pgas_command_reply  the answer to a pgas_command from that browser
+
+Events received from the browser (see `command`):
+    pgas_command  {"action": "check"}: one bag test (each sensor in turn, labelled
+                  "check", not used for training); {"action": "next"}: the
+                  next sensor is ready; {"action": "hood", "food": "...", "state": "fresh"}
+                  for a labelled capture; {"action": "selftest"} / {"action": "stop"}
 
 Every public method swallows its own errors: it is called from the Bridge
 thread and from job threads, which must never fail because of the dashboard.
@@ -19,13 +26,20 @@ from __future__ import annotations
 
 import collections
 import math
+import re
 import threading
 import time
 from typing import Any, Callable
 
-from . import config
+from . import config, jobs
 
 HISTORY_S = 300  # what the dashboard charts: the last 5 minutes at 1 Hz
+
+# Hood label = <state>_<food>. fresh / spoiling / spoiled / swill map to grades
+# for training (pgas/labeling.py); "test" captures are recorded but not used.
+STATES = ("fresh", "spoiling", "spoiled", "swill", "test")
+_FOOD = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
+FOOD_MAX = 40
 
 
 def _volts(raw: float) -> float | None:
@@ -109,12 +123,27 @@ class LiveFeed:
                    "state": str(state)}
             if isinstance(result, dict):
                 # Only small, JSON-safe fields: a result can hold numpy features.
-                for k in ("grade", "advice", "error", "note", "retest", "step", "pass"):
+                for k in ("grade", "advice", "error", "note", "retest", "step", "pass", "method"):
                     v = result.get(k)
                     if v is not None:
                         msg[k] = v if isinstance(v, bool) else str(v)
+                if isinstance(result.get("decide_ms"), (int, float)):
+                    msg["decide_ms"] = float(result["decide_ms"])
+                if isinstance(result.get("actions"), list):
+                    msg["actions"] = [str(a) for a in result["actions"]][:8]
+                rises = result.get("rises_v")
+                if isinstance(rises, dict):
+                    msg["rises_v"] = {str(k): _num(v, 3) for k, v in rises.items()}
             with self.lock:
                 self.last_job = msg
+        except Exception:  # noqa: BLE001
+            return
+        self._send("pgas_job", msg)
+
+    def job_progress(self, job_id: str, kind: str, phase: str, i: int, n: int) -> None:
+        try:
+            msg = {"ts": round(self.clock(), 3), "id": str(job_id), "kind": str(kind),
+                   "state": "running", "phase": str(phase), "i": int(i), "n": int(n)}
         except Exception:  # noqa: BLE001
             return
         self._send("pgas_job", msg)
@@ -127,6 +156,46 @@ class LiveFeed:
         except Exception:  # noqa: BLE001
             return
         self._send("pgas_history", payload, room=sid)
+
+    def reply(self, sid, payload: dict) -> None:
+        """Answer one browser (or all of them when the sid is unknown)."""
+        self._send("pgas_command_reply", payload, room=sid if isinstance(sid, str) else None)
+
+
+def command(jobs_dir, data, on_next=None) -> dict:
+    """Handle a pgas_command from the dashboard by queueing a job.
+
+    The job goes through the same file queue as `python -m pgas.capture`, so a
+    test started from a phone runs exactly like one started from the CLI.
+    Returns the reply for the browser; never raises.
+    """
+    try:
+        d = data if isinstance(data, dict) else {}
+        action = str(d.get("action", ""))
+        if action == "hood":
+            state = str(d.get("state", "")).strip().lower()
+            food = re.sub(r"[\s-]+", "_", str(d.get("food", "")).strip().lower()).strip("_")
+            if state not in STATES:
+                return {"ok": False, "action": action, "error": "bad_state"}
+            if not food or len(food) > FOOD_MAX or not _FOOD.match(food):
+                return {"ok": False, "action": action, "error": "bad_food"}
+            label = f"{state}_{food}"
+            return {"ok": True, "action": action, "label": label,
+                    "id": jobs.submit(jobs_dir, "hood", label=label)}
+        if action == "check":
+            # One sensor at a time in a small bag (pgas.session.run_bag).
+            return {"ok": True, "action": action, "label": "check",
+                    "id": jobs.submit(jobs_dir, "bag", label="check")}
+        if action == "next":
+            if on_next is None:
+                return {"ok": False, "action": action, "error": "not_running"}
+            on_next()
+            return {"ok": True, "action": action}
+        if action in ("selftest", "stop"):
+            return {"ok": True, "action": action, "id": jobs.submit(jobs_dir, action)}
+        return {"ok": False, "action": action, "error": "bad_action"}
+    except Exception as e:  # noqa: BLE001 - reply with the error instead of crashing the handler
+        return {"ok": False, "error": f"{type(e).__name__}: {e}"}
 
 
 class FeedStatus:
@@ -144,6 +213,12 @@ class FeedStatus:
         self._status.log(line)
         try:
             self._feed.job_line(*self._ids(), line)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def progress(self, phase: str, i: int, n: int) -> None:
+        try:
+            self._feed.job_progress(*self._ids(), phase, i, n)
         except Exception:  # noqa: BLE001
             pass
 

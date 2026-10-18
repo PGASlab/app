@@ -18,11 +18,14 @@ def test_capture_to_grade_to_advice(tmp_path):
     assert out["advice"]
 
 
-def test_analyze_without_model(tmp_path, monkeypatch):
+def test_analyze_without_model_uses_gas_rule(tmp_path, monkeypatch):
     monkeypatch.setattr(pipeline, "get_classifier", lambda: None)
-    res = run_hood(MockSource(hood_profile(100)), NullDisplay(), tmp_path, "fresh_x", log=lambda m: None)
-    out = pipeline.analyze(res.csv)
-    assert out["grade"] is None and "pgas.train" in out["note"]
+    weak = run_hood(MockSource(hood_profile(0)), NullDisplay(), tmp_path, "check", log=lambda m: None)
+    out = pipeline.analyze(weak.csv)
+    assert out["method"] == "rule" and out["grade"] == "FRESH" and out["advice"]
+    assert set(out["rises_v"]) == set(config.SENSORS)
+    strong = run_hood(MockSource(hood_profile(3000)), NullDisplay(), tmp_path, "check", log=lambda m: None)
+    assert pipeline.analyze(strong.csv)["grade"] == "DO-NOT-SELL"
 
 
 def test_app_layout_detection(tmp_path):

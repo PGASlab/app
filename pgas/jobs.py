@@ -19,7 +19,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-KINDS = ("hood", "continuous", "selftest", "stop")
+KINDS = ("hood", "continuous", "selftest", "stop", "bag")
 FINAL = ("done", "failed", "rejected")
 
 

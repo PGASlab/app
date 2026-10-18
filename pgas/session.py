@@ -63,10 +63,13 @@ class RetestError(SessionError):
         super().__init__(f"{step}: {reason} - please re-test")
 
 
-# A gas channel below 1 % of full scale means the sensor is not connected
-# (a working MQ module always outputs some voltage). Readings near full scale
-# are a strong smell, not a fault, so they are allowed.
-MIN_GAS_FRACTION = 0.01
+# A gas channel below 0.25 % of full scale (about 41 counts, 0.012 V at the
+# module output) means the sensor is not connected: with AO unplugged the 20 kΩ
+# divider leg pulls the pin to 0 V. A working MQ module can sit much lower than
+# expected, though: on the real board the Waveshare MQ-3 read 0.04-0.06 V in
+# clean air (about 130 counts), so the floor must stay well below that.
+# Readings near full scale are a strong smell, not a fault, and are allowed.
+MIN_GAS_FRACTION = 0.0025
 
 
 def _volts(raw: float) -> float:
@@ -114,8 +117,18 @@ def run_hood(
     recover_max_s: int = config.HOOD_RECOVER_MAX_S,
     meta: dict | None = None,
     stop: threading.Event | None = None,
+    progress: Callable[[str, int, int], None] | None = None,
 ) -> HoodResult:
+    """`progress(phase, i, n)` is called once per second (phase: baseline,
+    move, expose, recover); it is for display only and must not raise."""
     stop = stop or threading.Event()
+
+    def tick(phase: str, i: int, n: int) -> None:
+        if progress is not None:
+            try:
+                progress(phase, i, n)
+            except Exception:  # noqa: BLE001 - display only
+                pass
     src.flush()
     started = datetime.now()
     w = CaptureWriter(out_dir, "hood", label, started, meta=meta)
@@ -138,6 +151,7 @@ def run_hood(
         log(f"STEP 1/3: hold the box in open air, away from food ({baseline_s} s)")
         for i in range(baseline_s):
             disp.show(display.countdown("A", baseline_s - i, i / baseline_s))
+            tick("baseline", i, baseline_s)
             r = _next(src, step="step 1/3 (clean air)")
             record("baseline", r)
             for s, v in vals(r).items():
@@ -149,11 +163,13 @@ def run_hood(
         log(f"MOVE NOW: put the box over the food, opening down, 3-5 cm above it ({move_s} s)")
         for i in range(move_s):
             disp.show(display.countdown("M", move_s - i, i / move_s))
+            tick("move", i, move_s)
             record("move", _next(src, step="step 2/3 (move)"))
 
         log(f"STEP 2/3: hold the box still over the food ({expose_s} s)")
         for i in range(expose_s):
             disp.show(display.countdown("H", expose_s - i, i / expose_s))
+            tick("expose", i, expose_s)
             r = _next(src, step="step 2/3 (over the food)")
             record("expose", r)
             for s, v in vals(r).items():
@@ -165,6 +181,7 @@ def run_hood(
         held, recovered = 0, False
         for i in range(recover_max_s):
             disp.show(display.countdown("V", recover_max_s - i, i / recover_max_s))
+            tick("recover", i, recover_max_s)
             r = _next(src, step="step 3/3 (airing out)")
             record("recover", r)
             ok = all(
@@ -181,6 +198,120 @@ def run_hood(
         capture_s = time.monotonic() - t_start
         w.close(recovered=recovered, capture_s=round(capture_s, 1))
         return HoodResult(str(w.csv_path), w.rows, recovered, capture_s)
+    except BaseException as e:
+        w.close(error=str(e))
+        raise
+
+
+# --- Bag mode: one sensor at a time ---------------------------------------
+#
+# For a small sealed bag that fits one MQ module: each sensor in turn reads
+# clean air outside the bag, goes into the bag and is measured for a few
+# seconds. Between sensors the operator swaps them and presses Next.
+
+SENSOR_NAMES = {"mq135": "MQ-135", "mq3": "MQ-3", "mq2": "MQ-2"}
+BAG_WAIT_MAX_S = 300
+# 5 s per sensor: 1 s clean air, 1 s to put it in the bag, 3 s measuring.
+BAG_BASELINE_S = 1
+BAG_MOVE_S = 1
+BAG_MEASURE_S = 3
+
+
+@dataclass
+class BagResult:
+    csv: str
+    rows: int
+    rises: dict[str, float]  # per sensor: peak in the bag minus its clean-air median (V)
+    capture_s: float
+
+
+def run_bag(
+    src: Source,
+    disp: Display,
+    out_dir: Path,
+    label: str,
+    wait_next: Callable[[], bool],
+    log: Log = print,
+    progress: Callable[[str, int, int], None] | None = None,
+    stop: threading.Event | None = None,
+    baseline_s: int = BAG_BASELINE_S,
+    move_s: int = BAG_MOVE_S,
+    measure_s: int = BAG_MEASURE_S,
+    sensors: tuple[str, ...] = config.SENSORS,
+    meta: dict | None = None,
+) -> BagResult:
+    """`wait_next()` blocks until the operator is ready for the next sensor;
+    it returns False when the test was stopped. `progress(step, i, n)` gets
+    step names like "measure:mq135" and "wait:mq3"."""
+    stop = stop or threading.Event()
+    started = datetime.now()
+    w = CaptureWriter(out_dir, "bag", label, started, meta=meta)
+    log(f"recording to {w.csv_path.name}")
+    t0: float | None = None
+    t_start = time.monotonic()
+    rises: dict[str, float] = {}
+    idx = {s: i for i, s in enumerate(config.SENSORS)}
+
+    def tick(step: str, i: int, n: int) -> None:
+        if progress is not None:
+            try:
+                progress(step, i, n)
+            except Exception:  # noqa: BLE001 - display only
+                pass
+
+    def record(phase: str, r: Reading) -> None:
+        nonlocal t0
+        if t0 is None:
+            t0 = r.t
+        w.write(Sample(r.t - t0, phase, r.a0, r.a1, r.a2, r.temp_c, r.rh_pct))
+
+    def volt(r: Reading, s: str) -> float:
+        return _volts((r.a0, r.a1, r.a2)[idx[s]])
+
+    try:
+        for k, s in enumerate(sensors):
+            name = SENSOR_NAMES.get(s, s)
+            step = f"sensor {k + 1}/{len(sensors)} ({name})"
+            if k > 0:
+                prev = SENSOR_NAMES.get(sensors[k - 1], sensors[k - 1])
+                log(f"NEXT: take {prev} out of the bag, hold {name} outside the bag, then press Next")
+                disp.show(display.text3(str(k + 1)))
+                tick(f"wait:{s}", 0, 1)
+                if not wait_next():
+                    raise SessionError("stopped")
+            src.flush()
+            log(f"{step}: hold {name} in clean air, outside the bag ({baseline_s} s)")
+            base = []
+            for i in range(baseline_s):
+                disp.show(display.countdown("A", baseline_s - i, i / baseline_s))
+                tick(f"baseline:{s}", i, baseline_s)
+                r = _next(src, step=f"{step} clean air")
+                record(f"baseline_{s}", r)
+                base.append(volt(r, s))
+                if stop.is_set():
+                    raise SessionError("stopped")
+            log(f"{step}: put {name} into the bag now ({move_s} s)")
+            for i in range(move_s):
+                disp.show(display.countdown("M", move_s - i, i / move_s))
+                tick(f"move:{s}", i, move_s)
+                record(f"move_{s}", _next(src, step=f"{step} move"))
+                if stop.is_set():
+                    raise SessionError("stopped")
+            log(f"{step}: measuring {name} in the bag ({measure_s} s)")
+            peak = -math.inf
+            for i in range(measure_s):
+                disp.show(display.countdown("H", measure_s - i, i / measure_s))
+                tick(f"measure:{s}", i, measure_s)
+                r = _next(src, step=f"{step} in the bag")
+                record(f"measure_{s}", r)
+                peak = max(peak, volt(r, s))
+                if stop.is_set():
+                    raise SessionError("stopped")
+            rises[s] = peak - statistics.median(base)
+            log(f"{name} done: {rises[s]:+.3f} V above clean air")
+        capture_s = time.monotonic() - t_start
+        w.close(rises_v={k: round(v, 4) for k, v in rises.items()}, capture_s=round(capture_s, 1))
+        return BagResult(str(w.csv_path), w.rows, rises, capture_s)
     except BaseException as e:
         w.close(error=str(e))
         raise

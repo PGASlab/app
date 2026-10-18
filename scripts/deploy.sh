@@ -33,7 +33,13 @@ echo "copying to $APP_DIR ..."
 board "mkdir -p $APP_DIR/data/raw $APP_DIR/data/jobs/pending $APP_DIR/data/jobs/status"
 
 echo "starting user:pgas (first start compiles the sketch and installs Python packages; needs internet once) ..."
-board "arduino-app-cli app stop user:pgas >/dev/null 2>&1 || true; arduino-app-cli app start user:pgas"
+# Flashing the MCU sometimes fails once with "Error requesting gpio line swdio"
+# (the SWD lines are still held right after the app stops); retry once.
+if ! board "arduino-app-cli app stop user:pgas >/dev/null 2>&1 || true; sleep 3; arduino-app-cli app start user:pgas"; then
+  echo "start failed - retrying once in 10 s ..."
+  sleep 10
+  board "arduino-app-cli app start user:pgas"
+fi
 if [ "$BOOT" = 1 ]; then
   board "arduino-app-cli properties set default user:pgas"
   echo "PGAS will start automatically at power-on."

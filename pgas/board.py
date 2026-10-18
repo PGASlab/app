@@ -19,9 +19,10 @@ import time
 import traceback
 from pathlib import Path
 
-from . import config, display, jobs, notify, selftest
+from . import agent, config, display, jobs, notify, rules, selftest
 from .dataio import CaptureWriter
-from .session import ContinuousState, Reading, RetestError, run_continuous, run_hood
+from .session import (BAG_WAIT_MAX_S, ContinuousState, Reading, RetestError, run_bag, run_continuous,
+                      run_hood)
 
 
 class QueueSource:
@@ -80,6 +81,7 @@ class Runtime:
         self.busy = threading.Lock()
         self.stop_event = threading.Event()
         self.current: str | None = None
+        self.next_event = threading.Event()  # "Next sensor" pressed on the dashboard
         self.feed = feed  # pgas.web.LiveFeed or None; its methods never raise
         if analyze is None:
             from .pipeline import analyze
@@ -131,8 +133,10 @@ class Runtime:
             kind, p = job["kind"], job.get("params", {})
             if kind == "hood":
                 res = run_hood(self.source, self.disp, self.raw_dir, p["label"], log=st.log,
-                               stop=self.stop_event)
+                               stop=self.stop_event, progress=getattr(st, "progress", None))
                 st.log("analysing...")
+                if hasattr(st, "progress"):
+                    st.progress("analyse", 0, 1)
                 out = self.analyze(res.csv, use_llm=p.get("use_llm", True))
                 out["capture_s"] = round(res.capture_s, 1)
                 out["recovered"] = res.recovered
@@ -145,6 +149,8 @@ class Runtime:
                     st.log(out.get("note", "no grade"))
                 _annotate(Path(res.csv), out)
                 st.finish("done", out)
+            elif kind == "bag":
+                self._bag(p, st)
             elif kind == "continuous":
                 self._continuous(job, st, resume)
             elif kind == "selftest":
@@ -164,6 +170,61 @@ class Runtime:
         finally:
             self.current = None
             self.busy.release()
+
+    def press_next(self) -> None:
+        self.next_event.set()
+
+    def _wait_next(self, max_s: float = BAG_WAIT_MAX_S) -> bool:
+        self.next_event.clear()
+        t0 = time.monotonic()
+        while not self.next_event.wait(0.5):
+            if self.stop_event.is_set():
+                return False
+            if time.monotonic() - t0 > max_s:
+                raise RetestError("waiting for the next sensor", f"Next was not pressed within {max_s:.0f} s")
+        return True
+
+    def _bag(self, p: dict, st) -> None:
+        res = run_bag(self.source, self.disp, self.raw_dir, p.get("label", "check"), self._wait_next,
+                      log=st.log, progress=getattr(st, "progress", None), stop=self.stop_event)
+        # Agent loop: SENSE (the three gas rises) -> DECIDE (on-device) -> ACT (physical + message).
+        t0 = time.perf_counter()
+        feats = {f"{s}_d_peak": v for s, v in res.rises.items()}
+        grade, rises = rules.quick_grade(feats)
+        adv = agent.advise(grade, feats, p.get("label", "check"), use_llm=False)
+        decide_ms = round((time.perf_counter() - t0) * 1000, 2)
+        actions = self._act(grade, adv.text)
+        out = {"grade": grade, "method": "rule", "rises_v": rises, "advice": adv.text,
+               "capture_s": round(res.capture_s, 1), "decide_ms": decide_ms, "actions": actions}
+        st.log(f"GRADE: {grade}")
+        st.log(f"ADVICE: {adv.text}")
+        st.log(f"ACT: {', '.join(actions)}")
+        _annotate(Path(res.csv), out)
+        st.finish("done", out)
+
+    def _act(self, grade: str, advice: str) -> list[str]:
+        """The agent's physical actions for a verdict (best effort, never raises)."""
+        actions = []
+        try:
+            frame = display.icon(grade)
+            if grade != "FRESH":
+                # Alarm: flash the warning icon on the LED matrix before leaving it on.
+                for _ in range(3):
+                    self.disp.show(display.blank())
+                    time.sleep(0.25)
+                    self.disp.show(frame)
+                    time.sleep(0.25)
+            self.disp.show(frame)
+            actions.append("led_alarm" if grade != "FRESH" else "led_ok")
+        except Exception as e:  # noqa: BLE001
+            print(f"act: LED failed: {e}", flush=True)
+        if grade != "FRESH":
+            try:
+                n = notify.send(f"PGAS alert: {grade} - {advice}")
+                actions.append("alert_sent" if n.get("sent") else "alert_queued")
+            except Exception as e:  # noqa: BLE001
+                print(f"act: alert failed: {e}", flush=True)
+        return actions
 
     def _continuous(self, job: dict, st: jobs.Status, resume: ContinuousState | None) -> None:
         p = job.get("params", {})

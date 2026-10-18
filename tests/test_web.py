@@ -166,3 +166,82 @@ def test_feed_status_never_raises():
     fs.log("hello")
     fs.finish("done", {"grade": "FRESH"})
     assert st.line == "hello" and st.state == "done" and fs.data["id"] == "x"
+
+
+# --- pgas_command: buttons on the dashboard queue the same jobs as the CLI ---
+
+from pgas.web import command  # noqa: E402
+
+
+def _pending(tmp_path):
+    return [json.loads(p.read_text()) for p in sorted((tmp_path / "pending").glob("*.json"))]
+
+
+def test_command_hood_queues_labelled_job(tmp_path):
+    r = command(tmp_path, {"action": "hood", "food": " Soymilk Soup ", "state": "fresh"})
+    assert r["ok"] and r["label"] == "fresh_soymilk_soup"
+    (job,) = _pending(tmp_path)
+    assert job["kind"] == "hood" and job["params"] == {"label": "fresh_soymilk_soup"} and job["id"] == r["id"]
+
+
+@pytest.mark.parametrize("data,err", [
+    ({"action": "hood", "food": "雞肉", "state": "fresh"}, "bad_food"),
+    ({"action": "hood", "food": "", "state": "fresh"}, "bad_food"),
+    ({"action": "hood", "food": "a" * 41, "state": "fresh"}, "bad_food"),
+    ({"action": "hood", "food": "../x", "state": "fresh"}, "bad_food"),
+    ({"action": "hood", "food": "rice", "state": "rotten"}, "bad_state"),
+    ({"action": "continuous"}, "bad_action"),
+    (None, "bad_action"),
+])
+def test_command_rejects_bad_input(tmp_path, data, err):
+    r = command(tmp_path, data)
+    assert not r["ok"] and r["error"] == err
+    assert _pending(tmp_path) == []
+
+
+@pytest.mark.parametrize("action", ["selftest", "stop"])
+def test_command_selftest_and_stop(tmp_path, action):
+    r = command(tmp_path, {"action": action})
+    assert r["ok"]
+    assert [j["kind"] for j in _pending(tmp_path)] == [action]
+
+
+def test_command_job_runs_through_runtime(tmp_path):
+    feed = LiveFeed(Sink())
+    rt = Runtime(source=QueueSource(), disp=NullDisplay(), data_dir=tmp_path, analyze=lambda *a, **k: {}, feed=feed)
+    command(rt.jobs_dir, {"action": "stop"})
+    assert rt.poll_once()
+    (st,) = [json.loads(p.read_text()) for p in (rt.jobs_dir / "status").glob("*.json")]
+    assert st["kind"] == "stop" and st["state"] == "done"
+
+
+def test_reply_goes_to_one_browser():
+    sink = Sink()
+    feed = LiveFeed(sink)
+    feed.reply("sid-1", {"ok": True})
+    feed.reply(None, {"ok": False})
+    assert sink.sent == [("pgas_command_reply", {"ok": True}, "sid-1"), ("pgas_command_reply", {"ok": False}, None)]
+
+
+def test_command_check_is_one_bag_test(tmp_path):
+    r = command(tmp_path, {"action": "check"})
+    assert r["ok"] and r["label"] == "check"
+    (job,) = _pending(tmp_path)
+    assert job["kind"] == "bag" and job["params"] == {"label": "check"}
+
+
+def test_command_next_calls_runtime(tmp_path):
+    pressed = []
+    assert command(tmp_path, {"action": "next"}, on_next=lambda: pressed.append(1))["ok"]
+    assert pressed == [1] and _pending(tmp_path) == []
+    assert command(tmp_path, {"action": "next"})["error"] == "not_running"
+
+
+def test_progress_and_rule_result_reach_the_page():
+    sink = Sink()
+    feed = LiveFeed(sink, clock=lambda: 5.0)
+    feed.job_progress("j1", "hood", "expose", 10, 60)
+    feed.job_done("j1", "hood", "done", {"grade": "FRESH", "method": "rule", "rises_v": {"mq135": 0.01234}})
+    (_, prog, _), (_, done, _) = sink.sent
+    assert prog["phase"] == "expose" and prog["i"] == 10 and prog["n"] == 60
+    assert done["grade"] == "FRESH" and done["method"] == "rule" and done["rises_v"] == {"mq135": 0.012}

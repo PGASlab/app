@@ -59,7 +59,8 @@ def food_name(label: str) -> str:
     for tail in (("room", "temp"), ("fridge",)):
         if tuple(parts[-len(tail):]) == tail and len(parts) > len(tail):
             parts = parts[: -len(tail)]
-    return " ".join(parts) or "food"
+    name = " ".join(parts)
+    return "food" if name in ("", "check") else name
 
 
 def _round_up_quarter(t: datetime) -> datetime:

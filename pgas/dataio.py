@@ -8,7 +8,8 @@ A capture is one CSV file plus a JSON sidecar with the same stem:
 CSV columns (one row per sample):
 
     t_s        seconds since the capture started
-    phase      baseline | expose | recover (hood mode) or continuous
+    phase      baseline | expose | recover (hood mode) or continuous;
+               <step>_<sensor> such as measure_mq135 (bag mode)
     mq135_raw  raw ADC count on A0
     mq3_raw    raw ADC count on A1
     mq2_raw    raw ADC count on A2
@@ -32,9 +33,9 @@ import numpy as np
 from . import config
 
 COLUMNS = ("t_s", "phase", "mq135_raw", "mq3_raw", "mq2_raw", "temp_c", "rh_pct")
-MODES = ("hood", "continuous")
+MODES = ("hood", "continuous", "bag")
 _LABEL_RE = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
-_STEM_RE = re.compile(r"^(?P<ts>\d{8}T\d{6})_(?P<mode>hood|continuous)_(?P<label>[a-z0-9_]+)$")
+_STEM_RE = re.compile(r"^(?P<ts>\d{8}T\d{6})_(?P<mode>hood|continuous|bag)_(?P<label>[a-z0-9_]+)$")
 
 
 @dataclass

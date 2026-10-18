@@ -6,7 +6,7 @@
 Collects ~20 s of 1 Hz readings and checks:
 
 * Bridge      - readings arrive from the MCU at ~1 Hz
-* <MQ> range  - pin voltage is above 1 % of full scale (not floating / shorted to
+* <MQ> range  - pin voltage is above 0.25 % of full scale (not floating / shorted to
                 GND) and below 97 % (the 10k/20k divider keeps a 5 V output at
                 3.33 V, so near-full-scale means saturation or a wiring fault)
 * <MQ> stable - spread over the window < 0.10 V at the sensor (heaters warmed up;
@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from . import config
 
 STABLE_SPREAD_V = 0.10
-MIN_FRACTION, MAX_FRACTION = 0.01, 0.97
+MIN_FRACTION, MAX_FRACTION = 0.0025, 0.97  # floor as in session.MIN_GAS_FRACTION
 
 
 @dataclass
