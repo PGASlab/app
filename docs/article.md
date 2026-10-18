@@ -11,7 +11,7 @@ cover_image: "https://raw.githubusercontent.com/PGASlab/app/main/docs/images/00-
 
 ▶ **Demo video (3:11):** [youtu.be/n88pRiuib3U](https://youtu.be/n88pRiuib3U)
 ▶ **Code (MIT):** [github.com/PGASlab/app](https://github.com/PGASlab/app)
-▶ **Try it without hardware:** [live UNO Q simulation](https://claude.ai/artifact/BoE3spE76moKDwF9TGCZLH)
+▶ **Try it without hardware:** [live UNO Q simulation](https://pgaslab.github.io/pgas-sim/)
 
 ## What I Built
 
