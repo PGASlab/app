@@ -11,7 +11,7 @@ from pgas.dataio import load_capture
 from pgas.session import NullDisplay, RetestError, SessionError, run_bag
 from mock_hw import MockSource
 
-STEP = 3 + 3 + 5  # clean air, move, measure (seconds = readings)
+STEP = 1 + 1 + 3  # clean air, move, measure (seconds = readings)
 
 
 def bag_profile(rise_counts):
@@ -19,7 +19,7 @@ def bag_profile(rise_counts):
     def f(i):
         k, j = divmod(i, STEP)
         base = [3000.0, 2500.0, 2800.0]
-        if k < 3 and j >= 6:
+        if k < 3 and j >= 2:
             base[k] += rise_counts[k]
         return tuple(base)
     return f

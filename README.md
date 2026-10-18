@@ -160,8 +160,8 @@ The page shows the three gas sensors (module output in volts) and the DHT22
 temperature and humidity, refreshed every second, with a 5-minute chart per gas
 sensor and the current test's steps and grade. A guided **Start test** button
 checks the food from the phone with a small sealed bag that fits one sensor:
-the three MQ sensors are tested one at a time (3 s clean air outside the bag,
-3 s to put it in, 5 s measuring), the page says what to do at every step and
+the three MQ sensors are tested one at a time, 5 s each (1 s clean air outside
+the bag, 1 s to put it in, 3 s measuring), the page says what to do at every step and
 waits for *Ready – test MQ-x* between sensors, then a pop-up shows *food looks
 fine* or *food has gone bad*. Until a classifier is trained, that verdict comes
 from a provisional rule on the three gas sensors only

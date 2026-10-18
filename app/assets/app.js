@@ -14,8 +14,8 @@ const COLOR_VAR = { mq135_v: '--c-mq135', mq3_v: '--c-mq3', mq2_v: '--c-mq2' };
 const WARN_V = 0.10;
 const OVER_V = 0.20;
 const DIAL_MAX_V = 0.50; // full scale of the dial (rise above clean air)
-// pgas.session.run_bag: 3 s clean air -> 3 s into the bag -> 5 s measuring, per sensor.
-const STEP_SHARE = { baseline: [0, 3 / 11], move: [3 / 11, 6 / 11], measure: [6 / 11, 1] };
+// pgas.session.run_bag: 1 s clean air -> 1 s into the bag -> 3 s measuring = 5 s per sensor.
+const STEP_SHARE = { baseline: [0, 1 / 5], move: [1 / 5, 2 / 5], measure: [2 / 5, 1] };
 const RING_LEN = 2 * Math.PI * 96;
 
 const $ = (id) => document.getElementById(id);
@@ -38,7 +38,7 @@ const I18N = {
     hint: 'Values are the MQ module output in volts, before the 10 kΩ / 20 kΩ divider. Clean air is estimated from the last few minutes, or measured at the start of each sensor in a test.',
     foot: 'Served by the board over Wi-Fi · works offline', raw: 'raw',
     check_h: 'Is this food still good?',
-    check_help: 'Three gas sensors smell the food one at a time: 3 s in clean air, then 5 s in the bag with the food. The page guides every step.',
+    check_help: 'Three gas sensors smell the food one at a time, 5 seconds each: a moment in clean air, then into the bag with the food. The page guides every step.',
     check_btn: 'Start test', checking: 'Testing…', next_btn: (n) => `Ready – test ${n}`, cancel: 'Cancel test',
     st_active: 'testing', st_next: 'next',
     sensor_of: (k) => `Sensor ${k} of 3`, sec: 'seconds',
@@ -74,7 +74,7 @@ const I18N = {
     hint: '數值是 MQ 模組的輸出電壓（伏特），在 10 kΩ / 20 kΩ 分壓之前。乾淨空氣的數值由最近幾分鐘估算；測試時則以每顆感測器開始前量到的為準。',
     foot: '由板子透過 Wi-Fi 提供 · 不需要網際網路', raw: '原始值',
     check_h: '這份食物還能吃嗎？',
-    check_help: '三顆氣體感測器會依序聞：每顆先在乾淨空氣中 3 秒，再放進裝食物的袋子裡 5 秒。每一步都會帶著你做。',
+    check_help: '三顆氣體感測器依序聞，每顆只要 5 秒：先在乾淨空氣中一下，再放進裝食物的袋子裡。每一步都會帶著你做。',
     check_btn: '開始測試', checking: '測試中…', next_btn: (n) => `準備好了，測 ${n}`, cancel: '取消測試',
     st_active: '測試中', st_next: '下一個',
     sensor_of: (k) => `第 ${k} / 3 顆感測器`, sec: '秒',

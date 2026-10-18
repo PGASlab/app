@@ -208,6 +208,10 @@ def run_hood(
 
 SENSOR_NAMES = {"mq135": "MQ-135", "mq3": "MQ-3", "mq2": "MQ-2"}
 BAG_WAIT_MAX_S = 300
+# 5 s per sensor: 1 s clean air, 1 s to put it in the bag, 3 s measuring.
+BAG_BASELINE_S = 1
+BAG_MOVE_S = 1
+BAG_MEASURE_S = 3
 
 
 @dataclass
@@ -227,9 +231,9 @@ def run_bag(
     log: Log = print,
     progress: Callable[[str, int, int], None] | None = None,
     stop: threading.Event | None = None,
-    baseline_s: int = 3,
-    move_s: int = 3,
-    measure_s: int = 5,
+    baseline_s: int = BAG_BASELINE_S,
+    move_s: int = BAG_MOVE_S,
+    measure_s: int = BAG_MEASURE_S,
     sensors: tuple[str, ...] = config.SENSORS,
     meta: dict | None = None,
 ) -> BagResult:
