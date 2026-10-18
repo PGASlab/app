@@ -30,41 +30,15 @@
         <span id="status-live" class="sr-only" role="status"></span>
       </div>
 
-      <section class="start" aria-labelledby="start-h">
-        <h2 id="start-h" data-i18n="start_h">Test food</h2>
-        <form id="start-form" novalidate>
-          <div class="fields">
-            <label class="field">
-              <span data-i18n="food_l">Food name (English letters)</span>
-              <input id="food" name="food" type="text" inputmode="latin" autocomplete="off"
-                     autocapitalize="none" spellcheck="false" maxlength="40" placeholder="soymilk_soup" required />
-            </label>
-            <label class="field">
-              <span data-i18n="state_l">Condition</span>
-              <select id="state" name="state">
-                <option value="fresh" data-i18n="st_fresh">Fresh</option>
-                <option value="spoiling" data-i18n="st_spoiling">Going off</option>
-                <option value="spoiled" data-i18n="st_spoiled">Spoiled</option>
-                <option value="swill" data-i18n="st_swill">Food waste</option>
-                <option value="test" data-i18n="st_test">Just testing (not used for training)</option>
-              </select>
-            </label>
-          </div>
-          <div class="actions">
-            <button type="submit" id="start-btn" class="primary" data-i18n="start_btn">Start test</button>
-            <button type="button" id="selftest-btn" data-i18n="selftest_btn">Self-test</button>
-            <button type="button" id="stop-btn" data-i18n="stop_btn">Stop</button>
-          </div>
-          <p id="start-msg" class="start-msg" role="status"></p>
-          <p class="start-help" data-i18n="start_help">Follow the letter on the board's LED matrix: A = hold in clean air, M = move over the food, H = hold still, V = lift away.</p>
-        </form>
-      </section>
-
-      <section class="job" id="job" hidden>
-        <h2 data-i18n="job_h">Current test</h2>
-        <p id="job-name" class="job-name"></p>
-        <p id="job-line" class="job-line"></p>
-        <p id="job-result" class="job-result" hidden></p>
+      <section class="check" aria-labelledby="check-h">
+        <h2 id="check-h" data-i18n="check_h">Is this food still good?</h2>
+        <p class="check-help" data-i18n="check_help">Press the button, then follow the letter on the board's LED matrix.</p>
+        <button id="check-btn" class="big" type="button" disabled data-i18n="check_btn">Test freshness</button>
+        <div class="progress" id="progress" hidden>
+          <div class="bar" id="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="phase-text"><span id="bar-fill"></span></div>
+          <p id="phase-text" class="phase"></p>
+        </div>
+        <p id="start-msg" class="start-msg" role="status"></p>
       </section>
 
       <section class="tiles">
@@ -104,9 +78,20 @@
 
     </main>
 
+    <div class="modal-backdrop" id="result" hidden>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="result-title" aria-describedby="result-detail">
+        <div class="result-icon" id="result-icon" aria-hidden="true"></div>
+        <h2 id="result-title"></h2>
+        <p id="result-detail"></p>
+        <p class="result-note" id="result-note"></p>
+        <button id="result-ok" type="button">OK</button>
+      </div>
+    </div>
+
     <footer class="foot">
       <span data-i18n="foot">Served by the board over Wi-Fi · works offline</span>
       <span id="raw" class="raw"></span>
+      <p class="disclaimer" data-i18n="disclaimer">Disclaimer: this site is for reference only. If you have any concern, ask a medical professional. Do not eat food based on this result alone.</p>
     </footer>
 
     <script src="libs/socket.io.min.js"></script>

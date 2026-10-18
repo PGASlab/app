@@ -89,23 +89,59 @@ canvas { display: block; width: 100%; height: 96px; margin-top: 8px; }
 
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
-.start { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; margin: 0 0 16px; }
-.start h2 { margin: 0 0 10px; font-size: 18px; }
-.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
-.field { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--muted); }
-.field input, .field select {
-  font: inherit; font-size: 17px; color: var(--ink); background: var(--bg);
-  border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-height: 44px; width: 100%;
+.check { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin: 0 0 16px; }
+.check h2 { margin: 0 0 6px; font-size: 20px; }
+.check-help { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
+button.big {
+  display: block; width: 100%; min-height: 64px; border-radius: 14px; border: 0; cursor: pointer;
+  background: var(--ink); color: var(--bg); font: inherit; font-size: 22px; font-weight: 800; letter-spacing: 0.02em;
+  transition: transform 0.12s ease, opacity 0.2s ease;
 }
-.field input[aria-invalid="true"] { border-color: var(--bad); }
-.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-.actions button {
-  font: inherit; font-size: 16px; min-height: 44px; padding: 0 16px; border-radius: 10px; cursor: pointer;
-  border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+button.big:active:not(:disabled) { transform: scale(0.98); }
+button.big:disabled { opacity: 0.5; cursor: not-allowed; }
+.progress { margin-top: 14px; }
+.bar { height: 14px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); overflow: hidden; }
+.bar span {
+  display: block; height: 100%; width: 0; border-radius: 999px; transition: width 0.9s linear;
+  background: linear-gradient(90deg, var(--c-mq135), var(--c-mq3), var(--c-mq2));
+  background-size: 200% 100%; animation: flow 2.4s linear infinite;
 }
-.actions button.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); font-weight: 700; flex: 1 1 160px; }
-.actions button:disabled { opacity: 0.45; cursor: not-allowed; }
-.start-msg { margin: 10px 0 0; min-height: 1.2em; font-size: 15px; }
+@keyframes flow { from { background-position: 0 0; } to { background-position: 200% 0; } }
+.phase { margin: 8px 0 0; font-size: 17px; font-weight: 600; }
+.start-msg { margin: 8px 0 0; min-height: 1.2em; font-size: 15px; }
 .start-msg.err { color: var(--bad); }
-.start-help { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
-.job-result.rejected { color: var(--warn); }
+
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; padding: 16px;
+  background: rgba(0, 0, 0, 0.45); opacity: 0; transition: opacity 0.2s ease;
+}
+.modal-backdrop[hidden] { display: none; }
+.modal-backdrop.show { opacity: 1; }
+.modal {
+  width: min(420px, 100%); background: var(--surface); color: var(--ink); border-radius: 22px; padding: 26px 22px 20px;
+  text-align: center; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); transform: scale(0.85) translateY(20px);
+  transition: transform 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.modal-backdrop.show .modal { transform: none; }
+.result-icon {
+  width: 84px; height: 84px; margin: 0 auto 12px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 46px; font-weight: 900; color: #fff; animation: pop 0.5s 0.1s both cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+@keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+.modal.good .result-icon { background: var(--ok); }
+.modal.bad .result-icon { background: var(--bad); }
+.modal.warn .result-icon { background: var(--warn); }
+.modal h2 { margin: 0; font-size: 28px; }
+.modal.good h2 { color: var(--ok); }
+.modal.bad h2 { color: var(--bad); }
+.modal p { margin: 10px 0 0; font-size: 16px; }
+.result-note { color: var(--muted); font-size: 13px !important; }
+.modal button {
+  margin-top: 18px; min-height: 48px; min-width: 140px; border-radius: 12px; border: 0; cursor: pointer;
+  background: var(--ink); color: var(--bg); font: inherit; font-size: 17px; font-weight: 700;
+}
+.disclaimer { flex-basis: 100%; margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) {
+  .bar span, .result-icon { animation: none; }
+  .modal, .modal-backdrop, .bar span { transition: none; }
+}

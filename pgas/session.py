@@ -114,8 +114,18 @@ def run_hood(
     recover_max_s: int = config.HOOD_RECOVER_MAX_S,
     meta: dict | None = None,
     stop: threading.Event | None = None,
+    progress: Callable[[str, int, int], None] | None = None,
 ) -> HoodResult:
+    """`progress(phase, i, n)` is called once per second (phase: baseline,
+    move, expose, recover); it is for display only and must not raise."""
     stop = stop or threading.Event()
+
+    def tick(phase: str, i: int, n: int) -> None:
+        if progress is not None:
+            try:
+                progress(phase, i, n)
+            except Exception:  # noqa: BLE001 - display only
+                pass
     src.flush()
     started = datetime.now()
     w = CaptureWriter(out_dir, "hood", label, started, meta=meta)
@@ -138,6 +148,7 @@ def run_hood(
         log(f"STEP 1/3: hold the box in open air, away from food ({baseline_s} s)")
         for i in range(baseline_s):
             disp.show(display.countdown("A", baseline_s - i, i / baseline_s))
+            tick("baseline", i, baseline_s)
             r = _next(src, step="step 1/3 (clean air)")
             record("baseline", r)
             for s, v in vals(r).items():
@@ -149,11 +160,13 @@ def run_hood(
         log(f"MOVE NOW: put the box over the food, opening down, 3-5 cm above it ({move_s} s)")
         for i in range(move_s):
             disp.show(display.countdown("M", move_s - i, i / move_s))
+            tick("move", i, move_s)
             record("move", _next(src, step="step 2/3 (move)"))
 
         log(f"STEP 2/3: hold the box still over the food ({expose_s} s)")
         for i in range(expose_s):
             disp.show(display.countdown("H", expose_s - i, i / expose_s))
+            tick("expose", i, expose_s)
             r = _next(src, step="step 2/3 (over the food)")
             record("expose", r)
             for s, v in vals(r).items():
@@ -165,6 +178,7 @@ def run_hood(
         held, recovered = 0, False
         for i in range(recover_max_s):
             disp.show(display.countdown("V", recover_max_s - i, i / recover_max_s))
+            tick("recover", i, recover_max_s)
             r = _next(src, step="step 3/3 (airing out)")
             record("recover", r)
             ok = all(

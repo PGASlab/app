@@ -6,7 +6,7 @@ import time
 from dataclasses import asdict
 from pathlib import Path
 
-from . import agent, config
+from . import agent, config, rules
 from .dataio import load_capture
 from .features import hood_features
 
@@ -33,9 +33,19 @@ def analyze(csv_path: Path | str, use_llm: bool = True, classifier=None, llm=Non
     out: dict = {"file": Path(csv_path).name, "label": cap.label,
                  "features": {k: round(v, 4) for k, v in feats.items()}}
     if clf is None:
-        out["grade"] = None
-        out["note"] = "no trained model in models/ yet - run python -m pgas.train on the Mac and redeploy"
-        out["timing_s"] = {"features": round(t_load - t0, 3)}
+        # No trained model yet: grade with the provisional gas-rise rule (pgas/rules.py).
+        grade, rise = rules.quick_grade(feats)
+        adv = agent.advise(grade, feats, cap.label, use_llm=False)
+        out.update({
+            "grade": grade,
+            "method": "rule",
+            "rises_v": rise,
+            "advice": adv.text,
+            "advice_source": adv.source,
+            "note": "rule-based grade (no trained model yet)",
+            "timing_s": {"features": round(t_load - t0, 3),
+                         "total_after_capture": round(time.perf_counter() - t0, 3)},
+        })
         return out
     pred = clf.predict(feats)
     t_inf = time.perf_counter()
@@ -44,6 +54,7 @@ def analyze(csv_path: Path | str, use_llm: bool = True, classifier=None, llm=Non
     t_adv = time.perf_counter()
     out.update({
         "grade": pred.grade,
+        "method": "model",
         "probabilities": {k: round(v, 3) for k, v in pred.probabilities.items()},
         "advice": adv.text,
         "advice_source": adv.source,

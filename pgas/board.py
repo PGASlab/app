@@ -131,8 +131,10 @@ class Runtime:
             kind, p = job["kind"], job.get("params", {})
             if kind == "hood":
                 res = run_hood(self.source, self.disp, self.raw_dir, p["label"], log=st.log,
-                               stop=self.stop_event)
+                               stop=self.stop_event, progress=getattr(st, "progress", None))
                 st.log("analysing...")
+                if hasattr(st, "progress"):
+                    st.progress("analyse", 0, 1)
                 out = self.analyze(res.csv, use_llm=p.get("use_llm", True))
                 out["capture_s"] = round(res.capture_s, 1)
                 out["recovered"] = res.recovered

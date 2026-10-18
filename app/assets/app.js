@@ -27,15 +27,21 @@ const I18N = {
     job_h: 'Current test', job_done: 'Last test', grade: 'Grade', advice: 'Advice', failed: 'Stopped',
     retest: 'please re-test',
     foot: 'Served by the board over Wi-Fi · works offline', raw: 'raw',
-    start_h: 'Test food', food_l: 'Food name (English letters)', state_l: 'Condition',
-    st_fresh: 'Fresh', st_spoiling: 'Going off', st_spoiled: 'Spoiled', st_swill: 'Food waste',
-    st_test: 'Just testing (not used for training)',
-    start_btn: 'Start test', selftest_btn: 'Self-test', stop_btn: 'Stop',
-    start_help: "Follow the letter on the board's LED matrix: A = hold in clean air, M = move over the food, H = hold still, V = lift away.",
-    sent: (l) => `Sent: ${l}. Starting on the board…`, sent_other: 'Sent to the board.',
-    bad_food: 'Type the food name in English letters or numbers, e.g. soymilk_soup.',
-    bad_state: 'Pick a condition.', not_connected: 'Not connected to the board yet.',
-    cmd_failed: (e) => `The board could not start it: ${e}`, busy: 'Another test is running. Press Stop first.',
+    check_h: 'Is this food still good?',
+    check_help: "Press the button, then follow the letter on the board's LED matrix: A = hold the box in clean air, M = move it over the food, H = hold still 3–5 cm above it, V = lift it away.",
+    check_btn: 'Test freshness', checking: 'Testing…',
+    ph_starting: 'Starting…', ph_baseline: 'A · Hold the box in clean air, away from food',
+    ph_move: 'M · Move the box over the food now', ph_expose: 'H · Hold still over the food',
+    ph_recover: 'V · Lift the box away and let it air out', ph_analyse: 'Analysing the smell…',
+    ph_done: 'Done', ph_stopped: 'Stopped',
+    res_good: 'Food looks fine', res_good_d: 'No spoilage gases above the clean-air level.',
+    res_bad: 'Food has gone bad', res_bad_d: 'Strong spoilage gases. Do not eat or sell it.',
+    res_spoiling: 'Spoilage gases are rising. It is starting to go off.',
+    res_retest: 'Please test again', res_busy: 'Another test is running. Wait for it to finish.',
+    res_rule: 'Judged from the three gas sensors (MQ-135, MQ-3, MQ-2) with a provisional rule.',
+    disclaimer: 'Disclaimer: this site is for reference only. If you have any concern, ask a medical professional. Do not eat food based on this result alone.',
+    not_connected: 'Not connected to the board yet.',
+    cmd_failed: (e) => `The board could not start it: ${e}`,
   },
   zh: {
     live: '即時', sub: '感測器現在聞到的氣味',
@@ -53,15 +59,21 @@ const I18N = {
     job_h: '目前的測試', job_done: '上一次測試', grade: '等級', advice: '建議', failed: '已中斷',
     retest: '請重新測試',
     foot: '由板子透過 Wi-Fi 提供 · 不需要網際網路', raw: '原始值',
-    start_h: '測試食物', food_l: '食物名稱（英文字母）', state_l: '狀態',
-    st_fresh: '新鮮', st_spoiling: '快壞了', st_spoiled: '壞掉了', st_swill: '廚餘',
-    st_test: '只是測試（不拿去訓練）',
-    start_btn: '開始測試', selftest_btn: '自我檢測', stop_btn: '停止',
-    start_help: '照板子 LED 矩陣上的字母做：A = 拿在乾淨空氣中，M = 移到食物上方，H = 保持不動，V = 移開散味。',
-    sent: (l) => `已送出：${l}，板子正在開始…`, sent_other: '已送到板子。',
-    bad_food: '請用英文字母或數字輸入食物名稱，例如 soymilk_soup。',
-    bad_state: '請選擇狀態。', not_connected: '還沒連上板子。',
-    cmd_failed: (e) => `板子無法開始：${e}`, busy: '另一個測試正在進行，請先按「停止」。',
+    check_h: '這份食物還能吃嗎？',
+    check_help: '按下按鈕後，照板子 LED 矩陣上的字母做：A = 盒子拿在乾淨空氣中，M = 移到食物上方，H = 在食物上方 3–5 公分保持不動，V = 移開散味。',
+    check_btn: '測試新鮮度', checking: '測試中…',
+    ph_starting: '準備中…', ph_baseline: 'A · 盒子拿在乾淨空氣中，遠離食物',
+    ph_move: 'M · 現在把盒子移到食物上方', ph_expose: 'H · 在食物上方保持不動',
+    ph_recover: 'V · 把盒子移開，讓它散味', ph_analyse: '正在分析氣味…',
+    ph_done: '完成', ph_stopped: '已中斷',
+    res_good: '食物沒壞', res_good_d: '沒有偵測到高於乾淨空氣的腐敗氣體。',
+    res_bad: '食物壞了', res_bad_d: '偵測到明顯的腐敗氣體，請不要食用或販售。',
+    res_spoiling: '腐敗氣體正在上升，食物開始變質。',
+    res_retest: '請重新測試', res_busy: '另一個測試正在進行，請等它結束。',
+    res_rule: '依三顆氣體感測器（MQ-135、MQ-3、MQ-2）以暫定規則判斷。',
+    disclaimer: '免責聲明：本網站僅提供參考，若有問題請洽專業醫師指示，請勿僅依此結果自行食用。',
+    not_connected: '還沒連上板子。',
+    cmd_failed: (e) => `板子無法開始：${e}`,
   },
 };
 let lang = 'en';
@@ -92,7 +104,7 @@ const series = { mq135_v: [], mq3_v: [], mq2_v: [] }; // [{t: local ms, v}]
 let lastAt = 0;          // local time (ms) the last sample arrived
 let skewMs = null;       // local clock minus board clock, from the latest sample
 let conn = 'connecting'; // connecting | connected | disconnected | no_client
-let job = null;          // {name, line, done}
+let job = null;          // {id, kind, phase, i, n, pct, done, grade, state}
 let lastRaw = null;      // [a0, a1, a2] of the last sample
 
 function toLocal(ts) {
@@ -137,8 +149,8 @@ function showValues(p) {
   $('v-rh').textContent = dhtOk ? fmt(p.rh_pct, 0) : '—';
   $('dht-note').hidden = dhtOk;
   if (Array.isArray(p.raw)) { lastRaw = p.raw; renderRaw(); }
-  if (p.job && (!job || job.done || job.name !== p.job)) {
-    job = { name: p.job, line: job && job.name === p.job ? job.line : '', done: false };
+  if (p.job && (!job || job.done) && !pending && p.job.startsWith('hood')) {
+    job = { id: p.job.split(' ').pop(), kind: 'hood', pct: (job && !job.done && job.pct) || 0, done: false };
     renderJob();
   }
 }
@@ -176,53 +188,14 @@ function renderStatus() {
   document.querySelector('.tiles').classList.toggle('stale-data', cls === 'stale');
 }
 
-function renderJob() {
-  const box = $('job');
-  if (!job) { box.hidden = true; return; }
-  box.hidden = false;
-  box.querySelector('h2').textContent = job.done ? T('job_done') : T('job_h');
-  $('job-name').textContent = job.name || '';
-  $('job-line').textContent = job.line || '';
-  const res = $('job-result');
-  res.className = 'job-result';
-  if (job.done && job.grade) {
-    res.hidden = false;
-    res.classList.add(job.grade);
-    res.textContent = `${T('grade')}: ${job.grade}${job.advice ? ` · ${T('advice')}: ${job.advice}` : ''}`;
-  } else if (job.done && job.state === 'rejected') {
-    res.hidden = false;
-    res.classList.add('rejected');
-    res.textContent = T('busy');
-  } else if (job.done && job.state === 'failed') {
-    res.hidden = false;
-    res.classList.add('failed');
-    res.textContent = `${T('failed')}${job.error ? `: ${job.error}` : ''}${job.retest ? ` – ${T('retest')}` : ''}`;
-  } else {
-    res.hidden = true;
-  }
-}
-
-function onJob(m) {
-  if (!m) return;
-  pending = false;
-  const name = `${m.kind} job ${m.id}`;
-  if (m.state === 'running') {
-    job = { name, line: m.line, done: false };
-  } else {
-    job = Object.assign({}, job && job.name === name ? job : { name, line: '' }, m, { name, done: true });
-  }
-  renderJob();
-  renderButtons();
-}
-
-// ------------------------------------------------------------ start / self-test / stop
+// ------------------------------------------------------------ one-button freshness test
+// Progress: each phase of the hood test fills its own share of the bar.
+const PHASES = {
+  baseline: [0, 30], move: [30, 35], expose: [35, 80], recover: [80, 95], analyse: [95, 100],
+};
 let ui = null;
-let pending = false; // a command was sent and its job has not started yet
-
-const FOOD_RE = /^[a-z0-9]+(?:_[a-z0-9]+)*$/;
-function cleanFood(v) {
-  return String(v || '').trim().toLowerCase().replace(/[\s-]+/g, '_').replace(/^_+|_+$/g, '');
-}
+let pending = false;  // the button was pressed and the job has not reported yet
+let shownResult = null; // id of the job whose result popup was shown
 
 function say(text, err) {
   const el = $('start-msg');
@@ -231,51 +204,98 @@ function say(text, err) {
 }
 
 function renderButtons() {
-  const online = conn === 'connected';
+  const btn = $('check-btn');
   const running = !!(job && !job.done);
-  $('start-btn').disabled = !online || running || pending;
-  $('selftest-btn').disabled = !online || running || pending;
-  $('stop-btn').disabled = !online;
+  btn.disabled = conn !== 'connected' || running || pending;
+  btn.textContent = running || pending ? T('checking') : T('check_btn');
 }
 
-function send(cmd) {
-  if (!ui || conn !== 'connected') { say(T('not_connected'), true); return false; }
-  pending = true;
-  renderButtons();
-  ui.send_message('pgas_command', cmd);
-  setTimeout(() => { pending = false; renderButtons(); }, 4000);
-  return true;
-}
-
-function onReply(r) {
-  if (!r) return;
-  if (r.ok) {
-    say(r.label ? T('sent')(r.label) : T('sent_other'));
-  } else {
-    pending = false;
-    const e = r.error === 'bad_food' ? T('bad_food') : r.error === 'bad_state' ? T('bad_state') : T('cmd_failed')(r.error);
-    say(e, true);
+function renderJob() {
+  const box = $('progress');
+  const running = !!(job && !job.done && job.kind === 'hood');
+  box.hidden = !running && !(job && job.done && job.kind === 'hood' && job.state === 'done');
+  if (job && job.kind === 'hood') {
+    let pct = job.pct || 0;
+    if (job.done) pct = 100;
+    $('bar-fill').style.width = `${pct}%`;
+    $('bar').setAttribute('aria-valuenow', String(Math.round(pct)));
+    const phase = job.done ? (job.state === 'done' ? 'done' : 'stopped') : (job.phase || 'starting');
+    const left = job.n && job.phase !== 'analyse' ? Math.max(0, job.n - job.i) : null;
+    $('phase-text').textContent = T(`ph_${phase}`) + (left !== null && phase !== 'recover' ? ` · ${left} s` : '');
   }
   renderButtons();
 }
 
-function wireButtons() {
-  const food = $('food');
-  food.addEventListener('input', () => food.removeAttribute('aria-invalid'));
-  $('start-form').addEventListener('submit', (ev) => {
-    ev.preventDefault();
-    const f = cleanFood(food.value);
-    if (!f || f.length > 40 || !FOOD_RE.test(f)) {
-      food.setAttribute('aria-invalid', 'true');
-      say(T('bad_food'), true);
-      food.focus();
-      return;
+function showResult(m) {
+  if (!m || shownResult === m.id) return;
+  shownResult = m.id;
+  const box = $('result');
+  const card = box.querySelector('.modal');
+  let cls, title, detail = '';
+  if (m.state === 'done' && m.grade) {
+    const ok = m.grade === 'FRESH';
+    cls = ok ? 'good' : 'bad';
+    title = ok ? T('res_good') : T('res_bad');
+    detail = m.grade === 'SPOILING' ? T('res_spoiling') : ok ? T('res_good_d') : T('res_bad_d');
+  } else if (m.state === 'rejected') {
+    cls = 'warn'; title = T('res_busy');
+  } else {
+    cls = 'warn'; title = T('res_retest');
+    detail = m.error ? String(m.error) : '';
+  }
+  card.className = `modal ${cls}`;
+  $('result-icon').textContent = cls === 'good' ? '✓' : cls === 'bad' ? '✕' : '!';
+  $('result-title').textContent = title;
+  $('result-detail').textContent = detail;
+  $('result-note').textContent = m.method === 'rule' ? T('res_rule') : '';
+  box.hidden = false;
+  requestAnimationFrame(() => box.classList.add('show'));
+  $('result-ok').focus();
+}
+
+function closeResult() {
+  const box = $('result');
+  box.classList.remove('show');
+  setTimeout(() => { box.hidden = true; $('check-btn').focus(); }, 200);
+}
+
+function onJob(m) {
+  if (!m) return;
+  pending = false;
+  if (m.state === 'running') {
+    const same = job && job.id === m.id;
+    job = Object.assign(same ? job : { id: m.id, kind: m.kind, pct: 0 }, { done: false });
+    if (m.phase && PHASES[m.phase]) {
+      const [a, b] = PHASES[m.phase];
+      const f = m.n ? Math.min(1, (m.i + 1) / m.n) : 0;
+      job.phase = m.phase; job.i = m.i; job.n = m.n;
+      job.pct = Math.max(job.pct || 0, a + (b - a) * f);
     }
-    food.value = f;
-    send({ action: 'hood', food: f, state: $('state').value });
+  } else {
+    job = Object.assign({}, job && job.id === m.id ? job : { id: m.id, kind: m.kind }, m, { done: true });
+    if (m.kind === 'hood' || m.state === 'rejected') showResult(m);
+  }
+  renderJob();
+}
+
+function wireButtons() {
+  $('check-btn').addEventListener('click', () => {
+    if (!ui || conn !== 'connected') { say(T('not_connected'), true); return; }
+    say('');
+    pending = true;
+    job = null;
+    renderJob();
+    ui.send_message('pgas_command', { action: 'check' });
+    setTimeout(() => { if (pending) { pending = false; renderButtons(); } }, 6000);
   });
-  $('selftest-btn').addEventListener('click', () => send({ action: 'selftest' }));
-  $('stop-btn').addEventListener('click', () => send({ action: 'stop' }));
+  $('result-ok').addEventListener('click', closeResult);
+  $('result').addEventListener('click', (e) => { if (e.target === $('result')) closeResult(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('result').hidden) closeResult(); });
+}
+
+function onReply(r) {
+  if (r && !r.ok) { pending = false; say(T('cmd_failed')(r.error), true); }
+  renderButtons();
 }
 
 function cssVar(name) {
@@ -367,7 +387,7 @@ function connect() {
       for (const p of list) addSample(p, false);
       if (!lastAt) showValues(latest);
     }
-    if (m && m.last_job && !job) onJob(m.last_job);
+    if (m && m.last_job && !job) { shownResult = m.last_job.id; onJob(m.last_job); }
     tick();
   });
   ui.on_message('pgas_job', onJob);

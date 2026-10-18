@@ -13,8 +13,9 @@ Events sent to the browser:
     pgas_command_reply  the answer to a pgas_command from that browser
 
 Events received from the browser (see `command`):
-    pgas_command  {"action": "hood", "food": "...", "state": "fresh"} or
-                  {"action": "selftest"} / {"action": "stop"}
+    pgas_command  {"action": "check"}: one hood test labelled "check" (not used
+                  for training); {"action": "hood", "food": "...", "state": "fresh"}
+                  for a labelled capture; {"action": "selftest"} / {"action": "stop"}
 
 Every public method swallows its own errors: it is called from the Bridge
 thread and from job threads, which must never fail because of the dashboard.
@@ -121,12 +122,23 @@ class LiveFeed:
                    "state": str(state)}
             if isinstance(result, dict):
                 # Only small, JSON-safe fields: a result can hold numpy features.
-                for k in ("grade", "advice", "error", "note", "retest", "step", "pass"):
+                for k in ("grade", "advice", "error", "note", "retest", "step", "pass", "method"):
                     v = result.get(k)
                     if v is not None:
                         msg[k] = v if isinstance(v, bool) else str(v)
+                rises = result.get("rises_v")
+                if isinstance(rises, dict):
+                    msg["rises_v"] = {str(k): _num(v, 3) for k, v in rises.items()}
             with self.lock:
                 self.last_job = msg
+        except Exception:  # noqa: BLE001
+            return
+        self._send("pgas_job", msg)
+
+    def job_progress(self, job_id: str, kind: str, phase: str, i: int, n: int) -> None:
+        try:
+            msg = {"ts": round(self.clock(), 3), "id": str(job_id), "kind": str(kind),
+                   "state": "running", "phase": str(phase), "i": int(i), "n": int(n)}
         except Exception:  # noqa: BLE001
             return
         self._send("pgas_job", msg)
@@ -165,6 +177,9 @@ def command(jobs_dir, data) -> dict:
             label = f"{state}_{food}"
             return {"ok": True, "action": action, "label": label,
                     "id": jobs.submit(jobs_dir, "hood", label=label)}
+        if action == "check":
+            return {"ok": True, "action": action, "label": "check",
+                    "id": jobs.submit(jobs_dir, "hood", label="check")}
         if action in ("selftest", "stop"):
             return {"ok": True, "action": action, "id": jobs.submit(jobs_dir, action)}
         return {"ok": False, "action": action, "error": "bad_action"}
@@ -187,6 +202,12 @@ class FeedStatus:
         self._status.log(line)
         try:
             self._feed.job_line(*self._ids(), line)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def progress(self, phase: str, i: int, n: int) -> None:
+        try:
+            self._feed.job_progress(*self._ids(), phase, i, n)
         except Exception:  # noqa: BLE001
             pass
 

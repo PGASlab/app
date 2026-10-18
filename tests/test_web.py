@@ -221,3 +221,20 @@ def test_reply_goes_to_one_browser():
     feed.reply("sid-1", {"ok": True})
     feed.reply(None, {"ok": False})
     assert sink.sent == [("pgas_command_reply", {"ok": True}, "sid-1"), ("pgas_command_reply", {"ok": False}, None)]
+
+
+def test_command_check_is_one_button_hood(tmp_path):
+    r = command(tmp_path, {"action": "check"})
+    assert r["ok"] and r["label"] == "check"
+    (job,) = _pending(tmp_path)
+    assert job["kind"] == "hood" and job["params"] == {"label": "check"}
+
+
+def test_progress_and_rule_result_reach_the_page():
+    sink = Sink()
+    feed = LiveFeed(sink, clock=lambda: 5.0)
+    feed.job_progress("j1", "hood", "expose", 10, 60)
+    feed.job_done("j1", "hood", "done", {"grade": "FRESH", "method": "rule", "rises_v": {"mq135": 0.01234}})
+    (_, prog, _), (_, done, _) = sink.sent
+    assert prog["phase"] == "expose" and prog["i"] == 10 and prog["n"] == 60
+    assert done["grade"] == "FRESH" and done["method"] == "rule" and done["rises_v"] == {"mq135": 0.012}

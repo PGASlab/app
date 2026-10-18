@@ -158,10 +158,12 @@ http://<board-name>.local:7000
 (or `http://<board-ip>:7000` if `.local` names don't resolve on your network).
 The page shows the three gas sensors (module output in volts) and the DHT22
 temperature and humidity, refreshed every second, with a 5-minute chart per gas
-sensor and the current test's steps and grade. It can also **start a test**:
-type the food name (English letters), pick its condition (fresh / going off /
-spoiled / food waste / just testing) and press *Start test*; *Self-test* and
-*Stop* are there too, so a phone is enough once PGAS is running. If no reading arrives for 3 s
+sensor and the current test's steps and grade. One **Test freshness** button
+starts a hood test from the phone: a progress bar follows the A / M / H / V
+steps and a pop-up shows *food looks fine* or *food has gone bad*. Until a
+classifier is trained, that verdict comes from a provisional rule on the three
+gas sensors only ([`pgas/rules.py`](pgas/rules.py)); labelled captures for
+training are still taken with `python3 -m pgas.capture --label ...`. If no reading arrives for 3 s
 it shows a "no data – check the board" warning. English / 繁體中文 toggle.
 It needs no internet: the page and its Socket.IO client
 ([`app/assets`](app/assets), copied by `scripts/deploy.sh`) are served by the
