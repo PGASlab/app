@@ -218,7 +218,7 @@ eat it, and ask a professional.
 
 ## Contributors
 
-- [@k66inthesky](https://github.com/k66inthesky)
+- [k66](https://github.com/k66inthesky)
 - [Alice](https://github.com/Alitsen777)
 - [29](https://github.com/0x29dev)
 - [Crystal](https://github.com/Crystal32378)
