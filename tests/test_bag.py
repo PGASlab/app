@@ -52,7 +52,7 @@ def _runtime(tmp_path, profile):
     return rt
 
 
-def test_runtime_bag_job_grades_with_rule(tmp_path):
+def _run_bag_job(tmp_path):
     rt = _runtime(tmp_path, bag_profile([0, 0, 2000]))
     rt._wait_next = lambda max_s=0: True
     from pgas import jobs
@@ -64,7 +64,22 @@ def test_runtime_bag_job_grades_with_rule(tmp_path):
             break
         threading.Event().wait(0.05)
     assert st["state"] == "done", st
-    assert st["result"]["grade"] == "DO-NOT-SELL" and st["result"]["method"] == "rule"
+    return st["result"]
+
+
+def test_runtime_bag_job_grades_with_rule_without_model(tmp_path, monkeypatch):
+    from pgas import bag_model
+    monkeypatch.setattr(bag_model, "load", lambda *a, **k: None)
+    res = _run_bag_job(tmp_path)
+    assert res["grade"] == "DO-NOT-SELL" and res["method"] == "rule"
+
+
+def test_runtime_bag_job_uses_model_with_rule_as_safety_net(tmp_path):
+    pytest.importorskip("onnxruntime")
+    res = _run_bag_job(tmp_path)
+    assert res["method"] == "model" and 0.0 <= res["p_spoiled"] <= 1.0
+    # A strong MQ-2-only rise: whatever the model says, the rule keeps the verdict severe.
+    assert res["rule_grade"] == "DO-NOT-SELL" and res["grade"] == "DO-NOT-SELL"
 
 
 def test_wait_next_times_out_and_stops(tmp_path):

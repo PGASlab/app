@@ -177,7 +177,7 @@ sensor recovers quickly, so you can test the next food straight away.
 | Step | What happens | Where |
 |---|---|---|
 | **Sense** | MQ-135, MQ-3 and MQ-2 are read at 1 Hz with the 14-bit ADC, averaged 16× | STM32U585 MCU (Arduino sketch) |
-| **Decide** | For each sensor: rise over its own clean-air reading. The largest rise sets the grade (≥ 0.10 V SPOILING, ≥ 0.20 V DO-NOT-SELL) | QRB2210 Linux (Python, App Lab app) |
+| **Decide** | For each sensor: rise over its own clean-air reading. An ONNX model turns the three rises into P(spoiled), checked by a safety rule | QRB2210 Linux (Python, ONNX Runtime) |
 | **Act** | LED matrix ✓ or flashing ✕, alert, verdict on the phone | MCU + Linux |
 
 The two halves of the UNO Q talk over the Arduino **Bridge**: the sketch calls
@@ -191,11 +191,33 @@ is what makes a 5-second test work. MQ sensors drift with temperature, humidity
 and warm-up, so absolute thresholds are unreliable, but a rise within a few
 seconds is not.
 
-The grade comes from a provisional rule, and the result screen says so. The repo
-also has the next step ready: a scikit-learn classifier exported to ONNX that
-runs on the board (`pgas/train.py`, `pgas/infer.py`), and a script to optimize
-it with Qualcomm AI Hub (`pgas/aihub.py`). It is not trained yet because we
-don't have enough labelled samples.
+### The open-source AI: a model that runs on the board
+
+The verdict now comes from a small machine-learning model that runs **on the
+UNO Q itself**, with no cloud:
+
+- **Model:** logistic regression in **scikit-learn**, exported to **ONNX** and
+  run by **ONNX Runtime** on the board's Linux side
+  ([`pgas/bag_model.py`](https://github.com/PGASlab/app/blob/main/pgas/bag_model.py)).
+  The model file is 411 bytes.
+- **Input:** the three rises (MQ-135, MQ-3, MQ-2). **Output:** the probability
+  that the food is spoiled. Above 80% it is DO-NOT-SELL, between 50% and 80%
+  it is SPOILING.
+- **Training data:** our own real measurements: the clean-air control (photo 2),
+  the spoiled milk in the guided test (photo 9) and an earlier spoiled-milk test.
+  Each one is repeated with ±0.01 V of noise, the spread we measured on a
+  sensor at rest.
+- **Safety net:** three samples is a start, not a validated model. So the board
+  also runs the simple rule (largest rise ≥ 0.10 V SPOILING, ≥ 0.20 V
+  DO-NOT-SELL) and keeps whichever verdict is **more severe**. A food-safety
+  tool should never be talked out of a warning by a model that has seen three
+  examples.
+
+The verdicts in photos 2 and 9 were made by the rule; we trained the model from
+those same tests afterwards, and it gives the same answers (7% spoiled for the
+clean air, 93% for the milk). Every new labelled test makes it better:
+add the rises to `SAMPLES` and run `python -m pgas.bag_model`. The repo also has
+a script to optimize models for the UNO Q with Qualcomm AI Hub (`pgas/aihub.py`).
 
 ### Hardware
 
@@ -240,6 +262,8 @@ ever leaves the stall.
 
 **Best Use of Arduino.**
 
+- It **runs a model on the board**: an ONNX model decides with ONNX Runtime on
+  the UNO Q, offline.
 - It is a **physical agent that senses and acts**: gas sensors in, LED-matrix
   alarm and alert out, with the decision made on the board in under a
   millisecond.
@@ -250,7 +274,8 @@ ever leaves the stall.
 ## Limits
 
 - One spoiled sample and one clean-air control is a demo, not an accuracy
-  study. The rule thresholds are provisional.
+  study. The model has seen three real samples and the rule thresholds are
+  provisional; both need many more foods.
 - MQ sensors need a few minutes of warm-up and drift with temperature and
   humidity.
 - PGAS is a reference tool, not a food-safety certification. If in doubt, do

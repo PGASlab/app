@@ -22,7 +22,7 @@ cp -R app/assets "$STAGE/assets"   # web_ui brick serves /app/assets
 cp app/python/main.py app/python/requirements.txt "$STAGE/python/"
 cp -R pgas "$STAGE/python/pgas"
 find "$STAGE" -name '__pycache__' -prune -exec rm -rf {} +
-for f in models/pgas_classifier.onnx models/model_card.json; do
+for f in models/pgas_classifier.onnx models/model_card.json models/pgas_bag.onnx models/pgas_bag_card.json; do
   [ -f "$f" ] && cp "$f" "$STAGE/models/"
 done
 [ -f "$STAGE/models/pgas_classifier.onnx" ] || echo "note: no trained model yet - hood captures will record but not grade"

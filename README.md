@@ -76,9 +76,12 @@ MQ-3 (ethanol) held by hand, module output (photos 10–12):
 |---|---|---|
 | 0.37 V | **0.70 V** | 0.38 V |
 
-The verdict comes from a provisional rule ([`pgas/rules.py`](pgas/rules.py)):
-the largest rise sets the grade, ≥ 0.10 V is SPOILING and ≥ 0.20 V is
-DO-NOT-SELL. A trained classifier is the next step (see [Roadmap](#roadmap)).
+The verdict comes from an **on-board ONNX model** ([`pgas/bag_model.py`](pgas/bag_model.py)):
+a scikit-learn logistic regression on the three rises, run by ONNX Runtime on
+the UNO Q, trained on the real tests above (clean air → 7% spoiled, milk → 93%).
+With only three real samples, a safety rule ([`pgas/rules.py`](pgas/rules.py):
+≥ 0.10 V SPOILING, ≥ 0.20 V DO-NOT-SELL) double-checks it and the more severe
+verdict wins. Retrain with `.venv/bin/python -m pgas.bag_model`.
 
 ## How it works
 
@@ -97,7 +100,7 @@ flowchart LR
   end
   subgraph LINUX["QRB2210 Linux (App Lab app)"]
     WEB["web_ui brick<br/>phone dashboard :7000"] -->|"Start / Next"| BAG["guided bag test<br/>3 sensors x 5 s"]
-    BAG --> RULE["decide<br/>rule now, ONNX model later"]
+    BAG --> RULE["decide<br/>ONNX model + safety rule"]
     RULE --> ACT["act<br/>alarm + alert"]
   end
   READ -->|"Bridge.notify pgas_sample"| BAG
@@ -191,7 +194,8 @@ sidecar. Labelling rules: [`docs/labeling.md`](docs/labeling.md).
 - [x] On-board sense → decide → act loop with LED-matrix alarm
 - [x] Power-bank operation and keep-alive after a reset
 - [ ] Collect labelled captures of more foods
-- [ ] Train the scikit-learn → ONNX classifier ([`pgas/train.py`](pgas/train.py)) and replace the rule
+- [x] On-board scikit-learn → ONNX model for the guided test ([`pgas/bag_model.py`](pgas/bag_model.py))
+- [ ] Retrain it on many more foods, then let it decide without the safety rule
 - [ ] Optimize the model for the board with Qualcomm AI Hub ([`pgas/aihub.py`](pgas/aihub.py))
 - [ ] Telegram alerts ([`pgas/notify.py`](pgas/notify.py), token stays on the board)
 
