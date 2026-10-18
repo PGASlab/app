@@ -2,10 +2,13 @@
 title: "PGAS: an AI nose on the Arduino UNO Q that tells you when food has gone bad"
 published: false
 tags: arduino, iot, ai, devchallenge
-cover_image: "[COVER_IMAGE_URL]"
+cover_image: "https://raw.githubusercontent.com/PGASlab/app/main/docs/images/preview.jpg"
 ---
 
 *Submission for the **Best Use of Arduino** prize: a physical agent that senses and acts, built on the Arduino UNO Q.*
+
+▶ **Code (MIT):** [github.com/PGASlab/app](https://github.com/PGASlab/app)
+▶ **Try it without hardware:** [live UNO Q simulation](https://claude.ai/artifact/BoE3spE76moKDwF9TGCZLH)
 
 ## The modern silver spoon
 
@@ -13,50 +16,138 @@ For centuries people tested food with a silver spoon, because silver turns black
 when it meets the sulfides that spoiling food gives off. PGAS does the same job
 with three gas sensors and an Arduino UNO Q. It smells the food, decides on the
 board whether it is fine or has gone bad, and then acts: the LED matrix on the
-board flashes a warning and an alert goes out.
+board flashes a warning, an alert goes out, and your phone shows the verdict.
 
 We built it for night-market stalls and small food businesses. Selling spoiled
 food is a health risk, and throwing away food that is still good is waste. PGAS
-runs entirely on the board. It needs no cloud, no account and no internet once
-it is set up.
+runs entirely on the board, from a power bank. It needs no cloud, no account
+and no internet once it is set up.
 
-▶ **Demo video:** [VIDEO_URL]
-▶ **Try it without hardware:** [live UNO Q simulation](https://claude.ai/artifact/BoE3spE76moKDwF9TGCZLH)
-▶ **Code (MIT):** [github.com/PGASlab/app](https://github.com/PGASlab/app)
+Below is one real test, photo by photo.
 
-## What it does
+## 1. The parts
 
-1. Put the food in a small zip bag.
-2. Open the PGAS page on your phone (the board serves it over Wi-Fi) and press **Start test**.
-3. The page walks you through the three sensors, one at a time, 5 seconds each:
-   hold the sensor in clean air, put it in the bag, keep it still while it measures.
-4. A pop-up says **Food looks fine** or **Food has gone bad**, and the board's
-   LED matrix shows ✓ or flashes ✕.
+![All parts: Arduino UNO Q, breadboard, wires, power bank and three gas sensors](https://raw.githubusercontent.com/PGASlab/app/main/docs/images/01-materials.jpg)
 
-![Dashboard during a test]([SCREENSHOT_TEST_URL])
-![Result pop-up]([SCREENSHOT_RESULT_URL])
+Everything PGAS needs:
 
-## Sense → decide → act
+- **Arduino UNO Q** (bottom right): an STM32U585 microcontroller and a Qualcomm
+  QRB2210 running Debian Linux on one board, with a built-in 8×13 LED matrix.
+- **Three gas sensors:** MQ-135 for ammonia and sulfides, MQ-3 (the orange one)
+  for ethanol, MQ-2 for broad volatile compounds.
+- **A breadboard** with a 10 kΩ / 20 kΩ voltage divider for each sensor, because
+  the UNO Q's analog pins take at most 3.3 V and the sensors output up to 5 V.
+- **A USB-C power bank.** No laptop is connected.
+- **A phone** on the same Wi-Fi. The board itself serves the PGAS page.
 
-PGAS is a small physical agent. Every test runs one loop on the UNO Q:
+## 2. Control test: no food nearby
+
+![Clean-air test: "Food looks fine"](https://raw.githubusercontent.com/PGASlab/app/main/docs/images/02-clean-air-fresh.jpg)
+
+First we ran the full test with no food anywhere near the sensors, to make sure
+PGAS does not raise false alarms. All three sensors stayed at their clean-air
+level (rises of +0.03 V, +0.02 V and +0.00 V), and the board decided
+**FRESH** in 0.6 ms. The LED matrix showed ✓.
+
+## 3. The suspect: a bottle of milk past its best
+
+![The spoiled milk bottle](https://raw.githubusercontent.com/PGASlab/app/main/docs/images/03-spoiled-milk.jpg)
+
+![Milk still inside the bottle](https://raw.githubusercontent.com/PGASlab/app/main/docs/images/04-milk-inside.jpg)
+
+Our test sample is a bottle of fresh milk that had been left to spoil. The
+second photo shows there really is milk inside. We poured some into a small
+container so one sensor at a time fits over it.
+
+## 4. The guided test, one sensor at a time
+
+Press **Start test** on the phone and the page walks you through it. Each sensor
+gets 5 seconds: 1 s in clean air, 1 s to move it over the food, 3 s measuring.
+A big countdown ring and the live reading show what is happening.
+
+![Testing MQ-135 over the milk, countdown at 3](https://raw.githubusercontent.com/PGASlab/app/main/docs/images/05-test-mq135.jpg)
+
+**MQ-135 first.** The sensor sits over the milk while the ring counts down.
+
+![MQ-135 and MQ-3 done, prompt to swap to MQ-2](https://raw.githubusercontent.com/PGASlab/app/main/docs/images/06-swap-to-mq3.jpg)
+
+**Then MQ-3.** When a sensor is done, the page tells you to take it out and get
+the next one ready. Here MQ-135 and MQ-3 are ticked and MQ-2 is next.
+
+![Pressing "Ready – test MQ-2"](https://raw.githubusercontent.com/PGASlab/app/main/docs/images/07-press-next.jpg)
+
+**Press the button** when the next sensor is in clean air. PGAS never moves on
+by itself, so you are never rushed.
+
+![Testing MQ-2 over the milk, countdown at 2](https://raw.githubusercontent.com/PGASlab/app/main/docs/images/08-test-mq2.jpg)
+
+**MQ-2 last.**
+
+## 5. The verdict: do not eat, do not sell
+
+![Result: "Food has gone bad", MQ-3 +0.21 V](https://raw.githubusercontent.com/PGASlab/app/main/docs/images/09-result-do-not-sell.jpg)
+
+PGAS says **Food has gone bad**. The MQ-3 (ethanol) rose **+0.21 V** above its
+own clean-air reading, past the 0.20 V limit, so the board graded the milk
+**DO-NOT-SELL** in 0.2 ms. MQ-135 rose +0.02 V and MQ-2 +0.05 V. Ethanol is what
+bacteria and yeasts produce as milk ferments, so MQ-3 is the sensor we expected
+to react most.
+
+The pop-up is written for anyone: one big verdict and one bar per sensor. It
+also lists what the agent did:
+
+- **Sense:** 3 gas sensors, rise above clean air
+- **Decide:** DO-NOT-SELL on the UNO Q, offline, in 0.2 ms
+- **Act:** LED matrix alarm (flashing ✕), alert queued (Telegram not set up yet)
+
+## 6. For the curious: the live gauges
+
+Scroll down the same page and every sensor has a speedometer dial, its voltage,
+its normal range and a live chart. Over the limit, the card turns red and
+blinks.
+
+![MQ-3 in clean air: 0.37 V](https://raw.githubusercontent.com/PGASlab/app/main/docs/images/10-mq3-clean-air.jpg)
+
+**MQ-3 in clean air: 0.37 V**, inside its normal range.
+
+![MQ-3 over the spoiled milk: 0.70 V, card red](https://raw.githubusercontent.com/PGASlab/app/main/docs/images/11-mq3-near-milk.jpg)
+
+**MQ-3 held over the spoiled milk: 0.70 V.** That is almost double, and the card
+turns red.
+
+![MQ-3 30 seconds after leaving the milk: 0.38 V](https://raw.githubusercontent.com/PGASlab/app/main/docs/images/12-mq3-30s-after.jpg)
+
+**30 seconds after taking it away: 0.38 V**, back to its clean-air value. The
+sensor recovers quickly, so you can test the next food straight away.
+
+| MQ-3 | Clean air | Over spoiled milk | 30 s later |
+|---|---|---|---|
+| Module output | 0.37 V | **0.70 V** | 0.38 V |
+
+## How it works: sense → decide → act
 
 | Step | What happens | Where |
 |---|---|---|
-| **Sense** | MQ-135 (ammonia, sulfides), MQ-3 (ethanol) and MQ-2 (broad VOCs) are read at 1 Hz with the 14-bit ADC, averaged 16× | STM32U585 MCU (Arduino sketch) |
-| **Decide** | For each sensor: rise in the bag over its own clean-air reading. The largest rise sets the verdict (≥ 0.10 V spoiling, ≥ 0.20 V spoiled) | QRB2210 Linux side (Python, App Lab app) |
-| **Act** | LED matrix flashes ✕ three times for spoiled food (✓ when fine), an alert is sent, and the phone shows the verdict with each sensor's rise | MCU + Linux |
+| **Sense** | MQ-135, MQ-3 and MQ-2 are read at 1 Hz with the 14-bit ADC, averaged 16× | STM32U585 MCU (Arduino sketch) |
+| **Decide** | For each sensor: rise over its own clean-air reading. The largest rise sets the grade (≥ 0.10 V SPOILING, ≥ 0.20 V DO-NOT-SELL) | QRB2210 Linux (Python, App Lab app) |
+| **Act** | LED matrix ✓ or flashing ✕, alert, verdict on the phone | MCU + Linux |
 
 The two halves of the UNO Q talk over the Arduino **Bridge**: the sketch calls
 `Bridge.notify("pgas_sample", …)` once a second, and Linux sends LED-matrix
-frames back with `Bridge.call("draw", …)`. The dashboard is served by the
-official App Lab `arduino:web_ui` brick, so the phone only needs to be on the
-same Wi-Fi or hotspot as the board.
+frames back with `Bridge.call("draw", …)`. The phone page is served by the
+official App Lab `arduino:web_ui` brick over Socket.IO, so the phone only needs
+to be on the same Wi-Fi or hotspot.
 
-The thresholds are a provisional rule, stated as such on the result screen. The
-repo also contains the next step: a scikit-learn classifier exported to ONNX
-that runs on the board (`pgas/train.py`, `pgas/infer.py`), trained on labelled
-captures, plus a script for Qualcomm AI Hub (`pgas/aihub.py`). It is not trained
-yet because we do not have enough labelled data. [UPDATE IF TRAINED]
+Comparing each sensor with **its own** clean-air reading taken seconds earlier
+is what makes a 5-second test work. MQ sensors drift with temperature, humidity
+and warm-up, so absolute thresholds are unreliable, but a rise within a few
+seconds is not.
+
+The grade comes from a provisional rule, and the result screen says so. The repo
+also has the next step ready: a scikit-learn classifier exported to ONNX that
+runs on the board (`pgas/train.py`, `pgas/infer.py`), and a script to optimize
+it with Qualcomm AI Hub (`pgas/aihub.py`). It is not trained yet because we
+don't have enough labelled samples.
 
 ## Hardware
 
@@ -66,68 +157,45 @@ yet because we do not have enough labelled data. [UPDATE IF TRAINED]
 | MQ-3 (Waveshare) | A1 | same divider |
 | MQ-2 | A2 | same divider |
 | Heaters | 5 V | all grounds common |
-| Power | USB-C | power bank for portable use |
+| Power | USB-C | 5 V power bank for portable use |
 
-The UNO Q's analog pins are not 5 V tolerant, so each MQ output goes through a
-divider. The design never puts more than 3.3 V on a pin.
+## What we learned on real hardware
 
-![Wiring]([WIRING_IMAGE_URL])
-
-## What we measured
-
-These are real readings from our board. We did not run a formal accuracy study.
-
-- **Self-test after warm-up** (20 readings, 0.97 Hz over the Bridge, module output):
-  MQ-135 0.87–0.88 V, MQ-3 0.45–0.47 V, MQ-2 0.94–0.96 V, all stable within 0.02 V.
-- **Spoiled milk** (read from the live dashboard chart, so approximate):
-  every sensor rose clearly above clean air. MQ-135 went from about 0.40 V to
-  about 0.78 V, MQ-3 from about 0.31 V to about 0.72 V and MQ-2 from about
-  0.68 V to about 0.97 V, then fell back once the sensor came out of the bag.
-- **Fresh vs spoiled with the guided test:** [RESULT_TABLE_TBD, the three rises
-  for a fresh sample and a spoiled sample from the result pop-up]
-
-## What we learned bringing it up on real hardware
-
-The simulation (an emulated UNO Q MCU API compiled to WebAssembly) got the logic
-right, but the real board taught us more:
+The browser simulation got the logic right, but the real board taught us more:
 
 - **Sketch libraries.** The Bridge library needs MsgPack, DebugLog, ArxContainer
   and ArxTypeTraits listed in `sketch.yaml`. We copied the exact versions from
   an App Lab example on the board.
-- **No LLM brick on our App Lab version.** `arduino-app-cli brick list` showed
-  no `arduino:llm`, so the advice falls back to rule-based sentences. The code
-  for on-board Gemma is there for when the brick is available.
-- **`adb shell` sets an Android `TMPDIR`** that does not exist on the UNO Q, which
-  broke `arduino-app-cli`. The deploy script now resets it.
-- **Sensors read lower than datasheets suggest.** Our MQ-3 sat at about 0.06 V in
-  clean air on a power bank. Our "sensor unplugged" check was too strict and
-  rejected it, so we lowered the floor to 0.25 % of full scale.
-- **One faulty part can reset the whole board.** The board rebooted every two
-  minutes. `journalctl` showed each boot's log simply stopping, with no
-  shutdown and no error, which points to a sudden power cut rather than a
-  crash. The resets stopped when we unplugged the DHT22, and we later found its
-  ground rail was not connected to the board's ground. The freshness verdict
-  never depended on it, so PGAS now runs without it.
-- **UX matters even for a sensor project.** Our first test took 4 minutes with
-  a hood over the food. With a small bag, one sensor at a time and 5 seconds
-  each, it now takes about 15 seconds plus sensor swaps.
+- **No LLM brick on our App Lab version**, so the advice text is rule-based.
+- **`adb shell` sets an Android `TMPDIR`** that does not exist on the UNO Q,
+  which broke `arduino-app-cli`. Our scripts reset it.
+- **Sensors read lower than datasheets suggest.** Our "sensor unplugged" check
+  rejected a working MQ-3, so we lowered the floor to 0.25 % of full scale.
+- **Plan for resets.** During development the board sometimes rebooted, and the
+  app did not always come back. We never fully pinned down the cause (loose
+  wires on the breadboard are our best guess), so we added a keep-alive that
+  restarts PGAS within a minute if it is not running.
+- **UX matters even for a sensor project.** Our first test took 4 minutes with a
+  hood over the food. One sensor at a time, 5 seconds each, guided by the
+  phone, it now takes about 15 seconds plus sensor swaps.
 
 ## Why it fits "Best Use of Arduino"
 
-- It is a **physical agent that senses and acts**: gas sensors in, LED matrix
-  alarm and alert out, with the decision made on the board.
+- It is a **physical agent that senses and acts**: gas sensors in, LED-matrix
+  alarm and alert out, with the decision made on the board in under a
+  millisecond.
 - It uses what makes the UNO Q different: the MCU and Linux working together
   over the Bridge, the built-in LED matrix, and App Lab bricks for the web UI.
-- It runs **offline** on a power bank, so it can work at a market stall.
+- It runs **offline on a power bank**, so it can work at a market stall.
 
 ## Limits
 
-- The verdict comes from a provisional rule, not from a trained model, and has
-  only been tried on a few foods.
-- MQ sensors drift with temperature and humidity and need several minutes of
-  warm-up.
-- This is a reference tool, not a food-safety certification. If in doubt, do
-  not eat it and ask a professional.
+- One spoiled sample and one clean-air control is a demo, not an accuracy
+  study. The rule thresholds are provisional.
+- MQ sensors need a few minutes of warm-up and drift with temperature and
+  humidity.
+- PGAS is a reference tool, not a food-safety certification. If in doubt, do
+  not eat it, and ask a professional.
 
 ## Team
 

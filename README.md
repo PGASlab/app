@@ -1,69 +1,119 @@
 <p align="center">
-  <img src="assets/pgas-org-logo.png" alt="PGAS logo" width="160">
+  <img src="assets/pgas-org-logo.png" alt="PGAS logo" width="140">
 </p>
 
 <h1 align="center">PGAS</h1>
-<p align="center"><b>AI Nose — The Modern Silver Spoon</b></p>
+
+<p align="center"><b>An AI nose on the Arduino UNO Q that tells you when food has gone bad.</b></p>
 <p align="center">
   <b>PGAS (Patrick Get A Nose)</b> — 派大星有鼻子了<br>
   <b>Portable Gas Analysis System</b>（可攜式氣體分析系統）
 </p>
 
+<p align="center">
+  <a href="https://github.com/PGASlab/app/actions/workflows/tests.yml"><img src="https://github.com/PGASlab/app/actions/workflows/tests.yml/badge.svg" alt="tests"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/board-Arduino%20UNO%20Q-00979D?logo=arduino&logoColor=white" alt="Arduino UNO Q">
+  <img src="https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/runs-100%25%20offline-success" alt="offline">
+</p>
+
+<p align="center">
+  <a href="docs/article.md">Article</a> ·
+  <a href="https://claude.ai/artifact/BoE3spE76moKDwF9TGCZLH">Live simulation</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#results">Results</a>
+</p>
+
+<p align="center">
+  <img src="docs/images/preview.jpg" alt="PGAS test run: parts, clean-air check, spoiled milk, guided three-sensor test, DO-NOT-SELL verdict, MQ-3 gauge before, near and after the milk" width="100%">
+</p>
+
+<table>
+  <tr>
+    <td align="center" width="33%"><img src="docs/images/01-materials.jpg" alt="All parts"><br><sub><b>1.</b> UNO Q, breadboard, 3 MQ sensors, power bank</sub></td>
+    <td align="center" width="33%"><img src="docs/images/05-test-mq135.jpg" alt="Testing MQ-135"><br><sub><b>2.</b> The phone guides each 5-second sensor test</sub></td>
+    <td align="center" width="33%"><img src="docs/images/09-result-do-not-sell.jpg" alt="Food has gone bad"><br><sub><b>3.</b> Spoiled milk → <b>DO-NOT-SELL</b>, LED matrix flashes ✕</sub></td>
+  </tr>
+</table>
+
 People used to test food with a silver spoon, because silver turns black when it
 meets sulfides. Spoiling food gives off ammonia, sulfides and ethanol. PGAS
-"smells" those gases with three MQ sensors on an **Arduino UNO Q**. It grades the
-food **FRESH / SPOILING / DO-NOT-SELL** on the board and gives the vendor one
-concrete line of advice, such as *"sell the chicken at a discount before 14:00"*.
+smells those gases with three MQ sensors on an **Arduino UNO Q**, decides on
+the board whether the food is **FRESH / SPOILING / DO-NOT-SELL**, and acts: the
+LED matrix flashes, an alert goes out, and the phone shows the verdict.
 
-PGAS is built for night-market stalls and small food businesses. Selling spoiled
-food is a food-safety risk, and throwing away food that is still good is waste.
-Everything runs **offline on the board**: a scikit-learn classifier exported to
-ONNX, and an open **Gemma 3 1B** model running under llama.cpp. No cloud
-inference, no account, and no running cost.
+## Features
 
-> Status: hardware build and data collection in progress. Results will be added
-> to this README and [`docs/results.md`](docs/results.md) only once they are
-> measured. Until then every figure is a placeholder such as `[ACCURACY_TBD]`.
+- **Senses → decides → acts on the board.** A physical agent: gas sensors in,
+  LED-matrix alarm and alert out, with no cloud in the loop.
+- **One button.** Open the page on your phone, press **Start test**, follow the
+  prompts. Three sensors, 5 seconds each.
+- **Live gauges.** Speedometer dials for every sensor that turn red and blink
+  above the limit, for anyone who wants the numbers.
+- **Portable.** Runs on a USB-C power bank; the phone only needs the same Wi-Fi
+  or hotspot as the board.
+- **Offline and open.** App Lab bricks, ONNX Runtime, scikit-learn and this code
+  (MIT). No account, no subscription, no running cost.
+- **English / 繁體中文** dashboard.
+
+## Results
+
+Real readings from our board during the test in the photos above
+([full photo set](docs/images)). This is a demo, not a formal accuracy study.
+
+| Test | MQ-135 | MQ-3 | MQ-2 | Verdict | Decide time |
+|---|---|---|---|---|---|
+| Clean air, no food (photo 2) | +0.03 V | +0.02 V | +0.00 V | FRESH | 0.6 ms |
+| Spoiled milk, guided test (photo 9) | +0.02 V | **+0.21 V** | +0.05 V | **DO-NOT-SELL** | 0.2 ms |
+
+Rise = reading in the food container minus the sensor's own clean-air reading.
+
+MQ-3 (ethanol) held by hand, module output (photos 10–12):
+
+| Clean air | Over the spoiled milk | 30 s after taking it away |
+|---|---|---|
+| 0.37 V | **0.70 V** | 0.38 V |
+
+The verdict comes from a provisional rule ([`pgas/rules.py`](pgas/rules.py)):
+the largest rise sets the grade, ≥ 0.10 V is SPOILING and ≥ 0.20 V is
+DO-NOT-SELL. A trained classifier is the next step (see [Roadmap](#roadmap)).
 
 ## How it works
 
-> **Try it without hardware:** [live UNO Q simulation](https://claude.ai/artifact/BoE3spE76moKDwF9TGCZLH). Press "Hood over swill" and watch the board's LED matrix count down.
+> **Try it without hardware:** [live UNO Q simulation](https://claude.ai/artifact/BoE3spE76moKDwF9TGCZLH).
 
 ```mermaid
 flowchart LR
-  subgraph Sensors["Sensors inside the K-812 box"]
+  subgraph Sensors["Gas sensors"]
     MQ135["MQ-135<br/>ammonia / sulfides"] -->|"10k/20k divider"| A0
     MQ3["MQ-3<br/>ethanol"] -->|"10k/20k divider"| A1
     MQ2["MQ-2<br/>broad VOCs"] -->|"10k/20k divider"| A2
-    DHT["DHT22<br/>temp / humidity"] --> D2
   end
   subgraph MCU["STM32U585 MCU (sketch)"]
-    A0 & A1 & A2 & D2 --> READ["1 Hz read<br/>14-bit ADC, x16 average"]
+    A0 & A1 & A2 --> READ["1 Hz read<br/>14-bit ADC, x16 average"]
     MATRIX["8x13 LED matrix"]
   end
-  subgraph LINUX["QRB2210 Linux (App Lab app, Docker)"]
-    SESSION["capture session<br/>hood / continuous"] --> CSV[("data/raw/*.csv")]
-    CSV --> FEAT["features.py<br/>deltas, peak, slope"]
-    FEAT --> ONNX["ONNX classifier<br/>FRESH / SPOILING / DO-NOT-SELL"]
-    ONNX --> AGENT["agent.py<br/>Gemma 3 1B via llama.cpp<br/>+ rule-based fallback"]
+  subgraph LINUX["QRB2210 Linux (App Lab app)"]
+    WEB["web_ui brick<br/>phone dashboard :7000"] -->|"Start / Next"| BAG["guided bag test<br/>3 sensors x 5 s"]
+    BAG --> RULE["decide<br/>rule now, ONNX model later"]
+    RULE --> ACT["act<br/>alarm + alert"]
   end
-  READ -->|"Bridge.notify pgas_sample"| SESSION
-  SESSION -->|"Bridge.call draw"| MATRIX
-  ONNX -->|"grade icon"| MATRIX
-  AGENT --> ADVICE["one sentence for the vendor<br/>(+ optional Telegram)"]
-  CLI["python -m pgas.capture<br/>(board or Mac via ssh/adb)"] -->|"job file"| SESSION
+  READ -->|"Bridge.notify pgas_sample"| BAG
+  ACT -->|"Bridge.call draw"| MATRIX
+  ACT --> WEB
 ```
 
-* **MCU sketch** ([`app/sketch/sketch.ino`](app/sketch/sketch.ino)): reads A0–A2 and the DHT22 once a second, sends the readings to Linux over the Arduino Bridge, and draws the frames Linux sends back on the LED matrix.
-* **Linux app** ([`app/python/main.py`](app/python/main.py) + [`pgas/`](pgas)): runs the capture sessions, extracts features, classifies, writes advice, and stores every raw reading as CSV.
-* **CLI** ([`pgas/capture.py`](pgas/capture.py)): starts a capture from the board shell or from the Mac (`--host` / `--adb`). It needs only the standard library.
-* **Simulation**: [▶ open the live UNO Q simulation in your browser](https://claude.ai/artifact/BoE3spE76moKDwF9TGCZLH). The sketch's UNO Q code path drives the board's LED matrix, reads the sensors through the dividers and talks to Linux over the Bridge. The UNO Q MCU API is emulated because no UNO Q simulator exists. The same page is in the repo as `sim/web/pgas-unoq-sim.html` and works offline; an AVR/Wokwi variant and the CI end-to-end runs are also in [`sim/`](sim).
-* **Mac**: trains the classifier ([`pgas/train.py`](pgas/train.py)) and makes the plots ([`pgas/plot.py`](pgas/plot.py)).
+| Step | What happens | Where |
+|---|---|---|
+| **Sense** | MQ-135, MQ-3 and MQ-2 read at 1 Hz, 14-bit ADC, averaged 16× | MCU sketch ([`app/sketch/sketch.ino`](app/sketch/sketch.ino)) |
+| **Decide** | Rise of each sensor in the food container over its own clean-air reading | Linux ([`pgas/session.py`](pgas/session.py), [`pgas/rules.py`](pgas/rules.py)) |
+| **Act** | LED matrix ✓ or flashing ✕, alert ([`pgas/notify.py`](pgas/notify.py)), verdict on the phone | MCU + Linux ([`pgas/board.py`](pgas/board.py)) |
 
-The classifier decides the grade. The LLM only turns grade + deadline into a
-friendly sentence, and its output is checked. If the output contradicts the grade
-or misses the deadline, or the LLM fails or takes more than 20 s, PGAS uses the
-rule-based sentence instead (see [`pgas/agent.py`](pgas/agent.py)).
+The MCU and Linux halves of the UNO Q talk over the Arduino **Bridge**. The
+dashboard is served by the official App Lab `arduino:web_ui` brick
+([`app/assets`](app/assets), [`pgas/web.py`](pgas/web.py)) and needs no internet.
 
 ## Hardware
 
@@ -72,13 +122,15 @@ rule-based sentence instead (see [`pgas/agent.py`](pgas/agent.py)).
 | MQ-135 (ammonia, sulfides) | A0 | AO through 10 kΩ (top) / 20 kΩ (bottom) divider |
 | MQ-3, Waveshare module (ethanol) | A1 | same divider |
 | MQ-2 (broad VOCs) | A2 | same divider |
-| DHT22 / AM2302 (bare) | D2 | 10 kΩ pull-up between VCC (3.3 V) and DATA |
 | MQ heaters | 5 V | all grounds common |
-| Power | USB-C | MacBook while developing; 5 V ⎓ 3 A power bank for demos |
+| Power | USB-C | laptop while developing; 5 V ⎓ 3 A power bank for portable use |
+| DHT22 (optional) | D2 | temperature / humidity only; the verdict does not use it |
 
-Full details, the voltage budget and pre-power checks: [`docs/wiring.md`](docs/wiring.md). Parts list: [`docs/bom.md`](docs/bom.md).
+The UNO Q's analog pins are not 5 V tolerant, so every MQ output goes through a
+divider (5 V → 3.33 V max). Details and pre-power checks:
+[`docs/wiring.md`](docs/wiring.md). Parts list: [`docs/bom.md`](docs/bom.md).
 
-## Setup on macOS (Apple Silicon)
+## Quick start
 
 All commands run **on the Mac** unless marked *board*.
 
@@ -86,106 +138,78 @@ All commands run **on the Mac** unless marked *board*.
 # 1. Tools
 brew install uv android-platform-tools     # uv = Python envs, adb = USB shell to the board
 
-# 2. Code + tests (Mac)
+# 2. Code + tests
 git clone https://github.com/PGASlab/app.git pgas && cd pgas
 uv venv .venv && uv pip install -e ".[dev]"
 .venv/bin/python -m pytest
 
-# 3. Board first setup: run Arduino App Lab once to name the board, set its
-#    password and join Wi-Fi (this also enables ssh). Then check it:
-scripts/board-info.sh <board-name>.local   # or: scripts/board-info.sh --adb
+# 3. First board setup: run Arduino App Lab once to name the board, set its
+#    password and join Wi-Fi. Then check it:
+scripts/board-info.sh --adb                # or: scripts/board-info.sh <board-name>.local
 
-# 4. Deploy and start PGAS; --boot starts it automatically at power-on
-scripts/deploy.sh <board-name>.local --boot
+# 4. Deploy; --boot starts PGAS at power-on and installs a keep-alive
+scripts/deploy.sh --adb --boot
 ```
 
-The **first start needs internet once**. App Lab compiles the sketch, installs
-`numpy` + `onnxruntime` into the app's environment, and pulls the llama.cpp runner
-and the Gemma 3 1B GGUF (722 MB). After that PGAS needs no network.
+Then open `http://<board-name>.local:7000` (or `http://<board-ip>:7000`) on a
+phone on the same Wi-Fi and press **Start test**. The first start needs internet
+once so App Lab can compile the sketch and install Python packages; after that
+PGAS runs offline.
 
-## Using it
+### The guided test
+
+1. Put the food in a small sealed bag or container that fits one sensor.
+2. Press **Start test**. For each sensor (MQ-135 → MQ-3 → MQ-2), 5 seconds:
+   1 s in clean air, 1 s to put it in, 3 s measuring.
+3. Between sensors, swap and press **Ready – test MQ-x**.
+4. The pop-up says **Food looks fine** or **Food has gone bad**, with each
+   sensor's rise and the sense / decide / act steps. Scroll down for the live
+   gauges and charts.
+
+### Command line and data collection
 
 ```bash
-# on the board (ssh <board-name>.local), or add --host <board-name>.local to run from the Mac
-cd ~/ArduinoApps/pgas/python
-python3 -m pgas.selftest                                   # PASS/FAIL hardware report
-python3 -m pgas.capture --mode hood --label fresh_chicken   # one hood measurement
+# on the board (adb shell / ssh), in ~/ArduinoApps/pgas/python
+python3 -m pgas.selftest                                    # PASS/FAIL hardware report
+python3 -m pgas.capture --mode hood --label fresh_chicken    # one labelled capture
 python3 -m pgas.capture --mode continuous --label chicken_room_temp --hours 48
-python3 -m pgas.capture --stop                              # end a continuous recording
+python3 -m pgas.capture --stop
+
+# on the Mac
+scripts/pull-data.sh --adb                 # board data/raw -> repo data/raw
+.venv/bin/python -m pgas.train             # LOSO model selection -> models/*.onnx
+.venv/bin/python -m pgas.plot              # docs/figures/*.png
 ```
 
-### Mode 1 – hood (demo and quick checks)
+Every capture is `data/raw/<YYYYmmddTHHMMSS>_<mode>_<label>.csv` plus a JSON
+sidecar. Labelling rules: [`docs/labeling.md`](docs/labeling.md).
 
-The LED matrix walks you through it, so you never need to look at a screen:
+## Roadmap
 
-| Matrix | What to do | Time |
-|---|---|---|
-| `A` + countdown | hold the box in open air, away from food (baseline) | 30 s |
-| `M` + countdown | move the box over the food, opening down, 3–5 cm above it | 5 s |
-| `H` + countdown | hold still over the food, without touching it | 60 s |
-| `V` + countdown | lift it away and let it air out, until readings return to baseline | up to 180 s |
-| ✓ / ! / ✗ | grade: FRESH / SPOILING / DO-NOT-SELL, advice printed | — |
+- [x] Three MQ sensors on the UNO Q with safe dividers
+- [x] Guided one-button test from the phone, Apple-style dashboard
+- [x] On-board sense → decide → act loop with LED-matrix alarm
+- [x] Power-bank operation and keep-alive after a reset
+- [ ] Collect labelled captures of more foods
+- [ ] Train the scikit-learn → ONNX classifier ([`pgas/train.py`](pgas/train.py)) and replace the rule
+- [ ] Optimize the model for the board with Qualcomm AI Hub ([`pgas/aihub.py`](pgas/aihub.py))
+- [ ] Telegram alerts ([`pgas/notify.py`](pgas/notify.py), token stays on the board)
 
-### Mode 2 – continuous (spoilage curves, hands-off)
-
-Put a portion of food in or under the box, leave it, and start the capture. The
-board writes one row per minute (the median of 60 one-second readings) for
-24–48 h. The first 10 minutes are the "fresh" baseline. If the app restarts, it
-resumes appending to the same file.
-
-### Data, training, plots (Mac)
-
-```bash
-scripts/pull-data.sh <board-name>.local          # board data/raw -> repo data/raw
-.venv/bin/python -m pgas.train                    # LOSO model selection -> models/*.onnx
-.venv/bin/python -m pgas.plot                     # docs/figures/*.png
-scripts/deploy.sh <board-name>.local              # ship the new model to the board
-```
-
-Every capture is `data/raw/<YYYYmmddTHHMMSS>_<mode>_<label>.csv`, plus a JSON
-sidecar holding the settings and the on-board result. Labelling rules are in
-[`docs/labeling.md`](docs/labeling.md).
-
-## Live dashboard over Wi-Fi
-
-While PGAS runs, the board serves a live page with the official App Lab
-`arduino:web_ui` brick. On a phone or Mac on the **same Wi-Fi**, open:
+## Project layout
 
 ```
-http://<board-name>.local:7000
+app/            App Lab app: sketch (MCU), python/main.py (Linux), assets (dashboard)
+pgas/           Python package: sessions, rules, board runtime, web feed, training
+scripts/        deploy, board-info, pull-data (ssh or --adb)
+sim/            browser and CI simulations of the UNO Q
+docs/           article, wiring, BOM, labelling, photos
+tests/          pytest suite (runs in CI)
 ```
 
-(or `http://<board-ip>:7000` if `.local` names don't resolve on your network).
-The page shows the three gas sensors (module output in volts) and the DHT22
-temperature and humidity, refreshed every second, with a 5-minute chart per gas
-sensor and the current test's steps and grade. A guided **Start test** button
-checks the food from the phone with a small sealed bag that fits one sensor:
-the three MQ sensors are tested one at a time, 5 s each (1 s clean air outside
-the bag, 1 s to put it in, 3 s measuring), the page says what to do at every step and
-waits for *Ready – test MQ-x* between sensors, then a pop-up shows *food looks
-fine* or *food has gone bad*. Until a classifier is trained, that verdict comes
-from a provisional rule on the three gas sensors only
-([`pgas/rules.py`](pgas/rules.py)); labelled captures for training are still
-taken with `python3 -m pgas.capture --label ...`. If no reading arrives for 3 s
-it shows a "no data – check the board" warning. English / 繁體中文 toggle.
-It needs no internet: the page and its Socket.IO client
-([`app/assets`](app/assets), copied by `scripts/deploy.sh`) are served by the
-board. The data comes from [`pgas/web.py`](pgas/web.py).
+## Disclaimer
 
-## Results
-
-| | |
-|---|---|
-| Leave-one-session-out accuracy | [ACCURACY_TBD] |
-| On-board time from end of capture to advice | [LATENCY_TBD] |
-| Data collected | [DATASET_TBD] |
-
-## Why open source
-
-A street vendor can't depend on a subscription, a cloud API or a phone signal.
-Each part PGAS uses is open: the Arduino App Lab bricks, llama.cpp, Gemma, ONNX
-Runtime, scikit-learn, and this code (MIT). That means anyone can rebuild it,
-retrain it on their own food, or swap the model for a better one.
+PGAS is a reference tool, not a food-safety certification. If in doubt, do not
+eat it, and ask a professional.
 
 ## Contributors
 
