@@ -2,103 +2,128 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
-    <title>PGAS Live</title>
+    <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <title>PGAS</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <header class="top">
-      <div class="brand">
-        <span class="logo" aria-hidden="true">👃</span>
-        <div>
-          <h1>PGAS <span data-i18n="live">live</span></h1>
-          <p class="sub" data-i18n="sub">What the sensors smell right now</p>
+    <header class="nav">
+      <div class="nav-in">
+        <div class="brand"><span class="logo" aria-hidden="true">👃</span><span class="brand-name">PGAS</span></div>
+        <div id="status" class="pill wait">
+          <span class="dot" aria-hidden="true"></span>
+          <span id="status-text" data-i18n="connecting">Connecting…</span>
+          <span id="status-live" class="sr-only" role="status"></span>
         </div>
-      </div>
-      <div class="lang" role="group" aria-label="Language">
-        <button id="lang-en" type="button" aria-pressed="true">EN</button>
-        <button id="lang-zh" type="button" aria-pressed="false">中文</button>
+        <div class="seg" role="group" aria-label="Language">
+          <button id="lang-en" type="button" aria-pressed="true">EN</button>
+          <button id="lang-zh" type="button" aria-pressed="false">中文</button>
+        </div>
       </div>
     </header>
 
     <main>
-      <div id="status" class="status wait">
-        <span class="dot" aria-hidden="true"></span>
-        <span id="status-text" data-i18n="connecting">Connecting to the board…</span>
-        <!-- Screen readers hear only state changes, not the per-second counter. -->
-        <span id="status-live" class="sr-only" role="status"></span>
-      </div>
+      <section class="hero">
+        <p class="eyebrow" data-i18n="eyebrow">AI Nose on Arduino UNO Q</p>
+        <h1 data-i18n="check_h">Is this food still good?</h1>
+        <p class="lede" data-i18n="check_help">Three gas sensors smell the food one at a time.</p>
+      </section>
 
-      <section class="check" aria-labelledby="check-h">
-        <h2 id="check-h" data-i18n="check_h">Is this food still good?</h2>
-        <p class="check-help" data-i18n="check_help">The three gas sensors are tested one at a time.</p>
+      <section class="card test" aria-labelledby="test-h">
+        <h2 id="test-h" class="sr-only" data-i18n="test_h">Freshness test</h2>
         <ol class="steps" id="steps">
-          <li><span class="n">1</span><span class="nm">MQ-135</span><span class="st"></span></li>
-          <li><span class="n">2</span><span class="nm">MQ-3</span><span class="st"></span></li>
-          <li><span class="n">3</span><span class="nm">MQ-2</span><span class="st"></span></li>
+          <li data-s="mq135"><span class="n">1</span><span class="nm">MQ-135</span><span class="st"></span></li>
+          <li data-s="mq3"><span class="n">2</span><span class="nm">MQ-3</span><span class="st"></span></li>
+          <li data-s="mq2"><span class="n">3</span><span class="nm">MQ-2</span><span class="st"></span></li>
         </ol>
-        <p id="instr" class="instr" aria-live="polite"></p>
-        <div class="progress" id="progress" hidden>
-          <div class="bar" id="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="phase-text"><span id="bar-fill"></span></div>
-          <p id="phase-text" class="phase"></p>
+
+        <div class="stage" id="stage">
+          <div class="ring-wrap" id="ring-wrap" hidden>
+            <svg class="ring" viewBox="0 0 220 220" aria-hidden="true">
+              <circle class="ring-bg" cx="110" cy="110" r="96" />
+              <circle class="ring-fg" id="ring-fg" cx="110" cy="110" r="96" />
+            </svg>
+            <div class="ring-center">
+              <span class="ring-sensor" id="ring-sensor"></span>
+              <span class="ring-num" id="ring-num"></span>
+              <span class="ring-unit" id="ring-unit"></span>
+            </div>
+          </div>
+          <p id="ring-live" class="ring-live" hidden></p>
+          <p id="instr" class="instr" aria-live="polite"></p>
         </div>
-        <button id="check-btn" class="big" type="button" disabled data-i18n="check_btn">Start test</button>
-        <button id="cancel-btn" class="cancel" type="button" hidden data-i18n="cancel">Cancel</button>
+
+        <div class="overall" id="overall" hidden>
+          <div class="overall-top"><span id="phase-text"></span><span id="pct-text"></span></div>
+          <div class="bar" id="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="phase-text"><span id="bar-fill"></span></div>
+        </div>
+
+        <button id="check-btn" class="cta" type="button" disabled data-i18n="check_btn">Start test</button>
+        <button id="cancel-btn" class="link" type="button" hidden data-i18n="cancel">Cancel</button>
         <p id="start-msg" class="start-msg" role="status"></p>
       </section>
 
-      <section class="tiles">
-        <article class="tile gas" data-key="mq135_v" style="--c: var(--c-mq135)">
-          <header><h2>MQ-135</h2><span class="pin">A0</span></header>
-          <p class="gasname" data-i18n="g_mq135">Ammonia / sulfides</p>
-          <p class="value"><span class="num" id="v-mq135_v">—</span><span class="unit">V</span></p>
-          <canvas id="c-mq135_v" aria-hidden="true"></canvas>
-          <p class="axis"><span data-i18n="ago5">5 min ago</span><span data-i18n="now">now</span></p>
-        </article>
-        <article class="tile gas" data-key="mq3_v" style="--c: var(--c-mq3)">
-          <header><h2>MQ-3</h2><span class="pin">A1</span></header>
-          <p class="gasname" data-i18n="g_mq3">Ethanol (alcohol)</p>
-          <p class="value"><span class="num" id="v-mq3_v">—</span><span class="unit">V</span></p>
-          <canvas id="c-mq3_v" aria-hidden="true"></canvas>
-          <p class="axis"><span data-i18n="ago5">5 min ago</span><span data-i18n="now">now</span></p>
-        </article>
-        <article class="tile gas" data-key="mq2_v" style="--c: var(--c-mq2)">
-          <header><h2>MQ-2</h2><span class="pin">A2</span></header>
-          <p class="gasname" data-i18n="g_mq2">Broad VOCs</p>
-          <p class="value"><span class="num" id="v-mq2_v">—</span><span class="unit">V</span></p>
-          <canvas id="c-mq2_v" aria-hidden="true"></canvas>
-          <p class="axis"><span data-i18n="ago5">5 min ago</span><span data-i18n="now">now</span></p>
-        </article>
-        <article class="tile dht">
-          <header><h2>DHT22</h2><span class="pin">D2</span></header>
-          <p class="gasname" data-i18n="g_dht">Air in the box</p>
-          <div class="pair">
-            <p class="value"><span class="num" id="v-temp">—</span><span class="unit">°C</span></p>
-            <p class="value"><span class="num" id="v-rh">—</span><span class="unit">%RH</span></p>
+      <section class="live" aria-labelledby="live-h">
+        <div class="section-head">
+          <h2 id="live-h" data-i18n="live_h">Live readings</h2>
+          <p class="sub" data-i18n="live_sub">Needle = rise above clean air. Green is normal; red means a strong smell.</p>
+        </div>
+        <div class="gauges">
+          <article class="card gauge" data-key="mq135_v" data-s="mq135" style="--c: var(--c-mq135)">
+            <header><h3>MQ-135</h3><span class="tag" data-i18n="g_mq135">Ammonia / sulfides</span></header>
+            <div class="dial"></div>
+            <div class="readout"><span class="num" id="v-mq135_v">—</span><span class="unit">V</span></div>
+            <p class="delta" id="d-mq135_v"></p>
+            <p class="range" id="r-mq135_v"></p>
+            <canvas id="c-mq135_v" aria-hidden="true"></canvas>
+          </article>
+          <article class="card gauge" data-key="mq3_v" data-s="mq3" style="--c: var(--c-mq3)">
+            <header><h3>MQ-3</h3><span class="tag" data-i18n="g_mq3">Ethanol</span></header>
+            <div class="dial"></div>
+            <div class="readout"><span class="num" id="v-mq3_v">—</span><span class="unit">V</span></div>
+            <p class="delta" id="d-mq3_v"></p>
+            <p class="range" id="r-mq3_v"></p>
+            <canvas id="c-mq3_v" aria-hidden="true"></canvas>
+          </article>
+          <article class="card gauge" data-key="mq2_v" data-s="mq2" style="--c: var(--c-mq2)">
+            <header><h3>MQ-2</h3><span class="tag" data-i18n="g_mq2">Broad VOCs</span></header>
+            <div class="dial"></div>
+            <div class="readout"><span class="num" id="v-mq2_v">—</span><span class="unit">V</span></div>
+            <p class="delta" id="d-mq2_v"></p>
+            <p class="range" id="r-mq2_v"></p>
+            <canvas id="c-mq2_v" aria-hidden="true"></canvas>
+          </article>
+        </div>
+
+        <article class="card dht">
+          <div><h3>DHT22</h3><span class="tag" data-i18n="g_dht">Temperature &amp; humidity</span></div>
+          <div class="dht-vals">
+            <span><b id="v-temp">—</b> °C</span>
+            <span><b id="v-rh">—</b> %RH</span>
           </div>
           <p class="note" id="dht-note" hidden data-i18n="dht_fail">The temperature sensor did not answer.</p>
         </article>
       </section>
-
-      <p class="hint" data-i18n="hint">Each gas sensor's voltage goes up when it smells its gas. Values are the MQ module output in volts, before the 10 kΩ / 20 kΩ divider.</p>
-
     </main>
 
-    <div class="modal-backdrop" id="result" hidden>
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="result-title" aria-describedby="result-detail">
+    <div class="sheet-backdrop" id="result" hidden>
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="result-title" aria-describedby="result-detail">
         <div class="result-icon" id="result-icon" aria-hidden="true"></div>
         <h2 id="result-title"></h2>
         <p id="result-detail"></p>
+        <div class="result-bars" id="result-bars"></div>
         <p class="result-note" id="result-note"></p>
-        <button id="result-ok" type="button">OK</button>
+        <button id="result-ok" class="cta" type="button">OK</button>
       </div>
     </div>
 
     <footer class="foot">
-      <span data-i18n="foot">Served by the board over Wi-Fi · works offline</span>
-      <span id="raw" class="raw"></span>
-      <p class="disclaimer" data-i18n="disclaimer">Disclaimer: this site is for reference only. If you have any concern, ask a medical professional. Do not eat food based on this result alone.</p>
+      <p class="hint" data-i18n="hint">Values are the MQ module output in volts, before the 10 kΩ / 20 kΩ divider.</p>
+      <p><span data-i18n="foot">Served by the board over Wi-Fi · works offline</span> · <span id="raw" class="raw"></span></p>
+      <p class="disclaimer" data-i18n="disclaimer">Disclaimer: this site is for reference only.</p>
     </footer>
 
     <script src="libs/socket.io.min.js"></script>
