@@ -45,6 +45,13 @@ smells those gases with three MQ sensors on an **Arduino UNO Q**, decides on
 the board whether the food is **FRESH / SPOILING / DO-NOT-SELL**, and acts: the
 LED matrix flashes, an alert goes out, and the phone shows the verdict.
 
+## Award
+
+PGAS won **Best Use of Arduino** in the **2026 Hacktoberfest Open-Source AI Challenge, Week 2: Side Hustle**, announced on October 23, 2026.
+
+- [Official winners announcement](https://dev.to/devteam/congrats-to-the-hacktoberfest-open-source-ai-challenge-week-2-side-hustle-winners-2i33)
+- [Project submission by k66: LLMs Have No Nose, So We Built One](https://dev.to/k66inthesky/llms-have-no-nose-so-we-built-one-an-ai-nose-on-the-arduino-uno-q-3fhl)
+
 ## Features
 
 - **Senses → decides → acts on the board.** A physical agent: gas sensors in,
